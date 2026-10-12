@@ -35,6 +35,11 @@
   border:1px solid #7a2222;border-radius:4px;background:#8c2b2b;color:#fff;font:inherit;font-weight:600}
 .vp-stop:hover{background:#a33535}
 .vp-stop:disabled{opacity:.5}
+/* группа кнопок вьюпорта (правый нижний угол) + акцентная «Отправить» */
+.vp-actions{position:absolute;right:12px;bottom:12px;z-index:12;display:flex;gap:6px}
+.vp-actions>.vp-stop{position:static;right:auto;bottom:auto;z-index:auto}
+.vp-go{border-color:var(--w-sel);background:var(--w-sel)}
+.vp-go:hover:not(:disabled){background:#5a86c8;border-color:#5a86c8}
 
 /* ------------------------- плавающие окна (левый край правой колонки) ------------ */
 .win-layer{position:absolute;inset:0;z-index:40;pointer-events:none}
@@ -127,7 +132,7 @@
 #laser-fill-opts{display:none;flex-direction:column;gap:2px;padding-left:8px;border-left:2px solid #ffffff14}
 .drill-tool-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #ffffff0f}
 /* ------------------------------ правая колонка ---------------------------------- */
-.bl-props-body{flex:1 1 auto;min-height:0;overflow:auto;padding:2px 0 6px}
+.bl-props-body{display:block;flex:1 1 auto;min-height:0;overflow:auto;padding:2px 0 6px}
 .bl-panel-gap{height:2px;flex:none}
 .bl-legend{display:flex;flex-direction:column;gap:3px;color:#cfcfcf}
 .bl-legend>div{display:flex;align-items:center;gap:6px}
@@ -207,13 +212,6 @@
 
 <!-- ================================ 3D-ВЬЮПОРТ ================================ -->
 <section class="bl-area bl-view3d" id="areaView3D">
-  <div class="bl-header" id="v3dHeader">
-    <button class="bl-editortype" data-menu="editorType" data-tip="Тип редактора" data-tip-desc="Переключить рабочее пространство 3D-вида."><svg class="ic"><use href="#i-view3d"/></svg></button>
-    <button class="bl-hdr-menu" data-menu="editorType" data-tip="Рабочая область" data-tip-desc="Активное 3D-представление."><svg class="ic ic-14"><use href="#i-outliner"/></svg><span class="lbl" id="hdrWsLabel">Генерация G-code</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
-    <span class="sp"></span>
-    <span class="bl-hdr-menu" data-tip="Навигация вьюпорта" data-tip-key="ЛКМ / ПКМ / колесо" data-tip-desc="ЛКМ — вращение, ПКМ — панорама, колесо — зум."><svg class="ic ic-14"><use href="#i-cursor3d"/></svg>3D-вид</span>
-  </div>
-
   <div class="bl-canvas" id="canvasArea">
 
     <!-- ------------------- рабочее пространство: генерация ------------------- -->
@@ -222,13 +220,17 @@
       <div class="vp-note" id="stats">Загрузите DXF-файл для построения 3D-модели</div>
       <div class="vp-overlay" id="loading">Обработка DXF…</div>
       <div class="vp-error" id="error-log"></div>
+      <div class="vp-actions"><button class="vp-stop vp-go" id="btnGoSend" disabled>Отправить</button></div>
     </div>
 
     <!-- ------------------- рабочее пространство: отправка ------------------- -->
     <div class="ws-view" data-ws="send" id="wsSendView">
       <div id="canvas3dContainer" class="three-host"></div>
       <div class="vp-note" id="sendNote"><b>Габарит</b> <span class="mono" id="bbInfo">—</span> · <b>Инструмент</b> <span class="mono" id="toolPos">—</span> · G1: <span class="mono" id="g1SegInfo">0</span> · G0: <span class="mono" id="g0SegInfo">0</span> · Отправлено: <span class="mono" id="sentCount">0</span>/<span class="mono" id="totalCount">0</span></div>
-      <button class="vp-stop" id="btnStop" disabled>■ Стоп</button>
+      <div class="vp-actions">
+        <button class="vp-stop vp-go" id="btnSendView" disabled>Отправить</button>
+        <button class="vp-stop" id="btnStop" disabled>■ Стоп</button>
+      </div>
     </div>
 
     <!-- ------------------------- плавающие окна (по одному) ------------------ -->
@@ -239,14 +241,10 @@
   </div>
 </section>
 
-<!-- ============================== ПРАВАЯ КОЛОНКА ============================= -->
+<!-- ===================== СПЛИТТЕР + ПРАВАЯ КОЛОНКА ===================== -->
+<div class="bl-split" data-axis="x" data-target="rightCol" data-min="230" data-max="900" data-invert="1"></div>
 <div class="bl-rightcol" id="rightCol">
   <section class="bl-area bl-properties" id="areaProps">
-    <div class="bl-header" id="propsHeader">
-      <button class="bl-editortype" data-tip="Панель свойств" data-tip-desc="Слои, легенда и консоль GRBL."><svg class="ic"><use href="#i-settings"/></svg></button>
-      <span class="bl-hdr-menu" id="propsTitle">Слои и легенда</span>
-      <span class="sp"></span>
-    </div>
     <div class="bl-props-body">
       <div id="panelGen">
         <div class="bl-panel">

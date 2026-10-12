@@ -140,6 +140,57 @@
     if (el.classList.contains('show')) closeWindow(id); else openWindow(id);
   }
 
+  /* ------------------- «Отправить» с вьюпорта генерации ------------------- */
+  // Кнопка активна только когда G-code сгенерирован (_lastAnyGCode ставит
+  // модуль генерации). По клику переключаем рабочую область на «отправку»
+  // и передаём код в текстовое поле + превью 3D.
+  var btnGoSend = document.getElementById('btnGoSend');
+  function goSendFromGeneration() {
+    var text = window._lastAnyGCode;
+    if (!text) {
+      setHint('G-code ещё не сгенерирован — постройте траекторию в «Окно. Генератор» (фрезер / лазер / сверловка).');
+      return;
+    }
+    setWorkspace('send');
+    var g = document.getElementById('gcode');
+    if (g) g.value = text;
+    if (typeof window.updateGCodeVisualization === 'function') window.updateGCodeVisualization(text);
+    setHint('G-code передан в отправку: <b>' + text.split(/\r?\n/).length + '</b> строк в поле «G-code».');
+  }
+  if (btnGoSend) btnGoSend.addEventListener('click', goSendFromGeneration);
+
+  /* ------------------- сплиттеры: размеры областей мышью ------------------- */
+  $$('.bl-split').forEach(function (sp) {
+    sp.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      var axis = sp.getAttribute('data-axis');
+      var target = document.getElementById(sp.getAttribute('data-target') || '');
+      if (!target) return;
+      var min = parseInt(sp.getAttribute('data-min') || '0', 10);
+      var max = parseInt(sp.getAttribute('data-max') || '9999', 10);
+      var inv = sp.getAttribute('data-invert') === '1';
+      var start = axis === 'x' ? e.clientX : e.clientY;
+      var box = target.getBoundingClientRect();
+      var size0 = axis === 'x' ? box.width : box.height;
+      sp.classList.add('drag');
+      function move(ev) {
+        var d = (axis === 'x' ? ev.clientX : ev.clientY) - start;
+        var s = Math.round(Math.max(min, Math.min(max, size0 + (inv ? -d : d))));
+        target.style.flex = 'none';
+        if (axis === 'x') target.style.width = s + 'px'; else target.style.height = s + 'px';
+        relayout();                       // пересобирает размеры вьюпортов 3D
+      }
+      function stop() {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', stop);
+        sp.classList.remove('drag');
+        relayout();
+      }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', stop);
+    });
+  });
+
   /* ---------------------------- сохранение файла ---------------------------- */
   function download(name, text) {
     var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });

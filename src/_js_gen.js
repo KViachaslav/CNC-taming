@@ -21,7 +21,8 @@ const CLIPPER = window.ClipperLib;
 // ============================================================
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x121212);
+scene.background = new THREE.Color(0x0a0a1a);
+scene.fog = new THREE.FogExp2(0x0a0a1a, 0.002);
 
 // Вьюпорт живёт внутри рабочей области CNC Suite, а не на всё окно:
 // размер берём по контейнеру (с откатом на окно, если он ещё не измерен).
@@ -32,9 +33,10 @@ function viewSize() {
 }
 const _view0 = viewSize();
 
+// Система координат — как в превью отправки: Y вверх, «пол» — плоскость XZ.
 const camera = new THREE.PerspectiveCamera(45, _view0.w / _view0.h, 0.1, 5000);
-camera.position.set(0, -100, 150);
-camera.up.set(0, 0, 1);
+camera.position.set(80, 60, 100);
+camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(_view0.w, _view0.h);
@@ -45,29 +47,64 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-dirLight.position.set(50, -50, 100);
+// Освещение — как в превью отправки
+scene.add(new THREE.AmbientLight(0x404060));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(1, 2, 1);
 scene.add(dirLight);
+const fillLight = new THREE.PointLight(0x445566, 0.5);
+fillLight.position.set(0, -5, 0);
+scene.add(fillLight);
+const backLight = new THREE.DirectionalLight(0x88aaff, 0.4);
+backLight.position.set(-1, 1, -1);
+scene.add(backLight);
 
-const grid = new THREE.GridHelper(300, 30, 0x444444, 0x222222);
-grid.rotation.x = Math.PI / 2;
+// Сетка, оси и звёздный фон — как в превью отправки
+const grid = new THREE.GridHelper(200, 40, 0x88aaff, 0x335588);
+grid.position.y = -0.1;
 scene.add(grid);
+scene.add(new THREE.AxesHelper(60));
+
+const starGeometry = new THREE.BufferGeometry();
+const starPositions = [];
+for (let i = 0; i < 800; i++) {
+    starPositions.push((Math.random() - 0.5) * 500);
+    starPositions.push((Math.random() - 0.5) * 300);
+    starPositions.push((Math.random() - 0.5) * 200 - 100);
+}
+starGeometry.setAttribute('position',
+    new THREE.BufferAttribute(new Float32Array(starPositions), 3));
+scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
+
+// DXF-геометрия строится в своей системе (X — вправо, Y — вверх чертежа, Z — высота),
+// поэтому весь контент лежит в worldGroup с поворотом -90° по X: локальная Z
+// становится мировой Y, а плоскость чертежа ложится на «пол» XZ — как в отправке.
+const worldGroup = new THREE.Group();
+worldGroup.rotation.x = -Math.PI / 2;
+scene.add(worldGroup);
 
 const dxfGroup = new THREE.Group();
-scene.add(dxfGroup);
+worldGroup.add(dxfGroup);
 
 const toolpathGroup = new THREE.Group();
 toolpathGroup.name = 'toolpath';
-scene.add(toolpathGroup);
+worldGroup.add(toolpathGroup);
 
 const drillGroup = new THREE.Group();
 drillGroup.name = 'drillpath';
-scene.add(drillGroup);
+worldGroup.add(drillGroup);
 
 const laserGroup = new THREE.Group();
 laserGroup.name = 'laserpath';
-scene.add(laserGroup);
+worldGroup.add(laserGroup);
+
+// Кнопка «Отправить» на вьюпорте генерации активна, как только появился G-code
+function markGCodeGenerated(text) {
+    if (!text) return;
+    window._lastAnyGCode = text;
+    const b = document.getElementById('btnGoSend');
+    if (b) b.disabled = false;
+}
 
 let layerGroups = {};
 let layerColors = {};
@@ -527,7 +564,7 @@ function build3DScene(parsed) {
     document.getElementById('layers-count').innerText = '(' + allLayers.length + ')';
 
     try {
-        dxfGroup.updateMatrixWorld(true);
+        worldGroup.updateMatrixWorld(true);
         const vBox = new THREE.Box3();
         Object.values(layerGroups).forEach(g => {
             if (g.visible) {
@@ -537,14 +574,16 @@ function build3DScene(parsed) {
         if (vBox.isEmpty()) vBox.setFromObject(dxfGroup);
 
         if (!vBox.isEmpty()) {
+            // vBox считается по мировым матрицам, т.е. уже в системе «Y вверх»
             const center = vBox.getCenter(new THREE.Vector3());
             const size   = vBox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z) || 100;
+            const dist   = maxDim * 1.2;
             controls.target.copy(center);
-            camera.position.set(center.x, center.y - maxDim * 1.2, maxDim * 1.2);
+            camera.position.set(center.x + dist * 0.8, center.y + dist * 0.6, center.z + dist);
             camera.lookAt(center);
             controls.update();
-            grid.position.set(center.x, center.y, -0.1);
+            grid.position.set(center.x, -0.1, center.z);
         }
     } catch (err) {
         console.error('BBox error:', err);
@@ -1540,6 +1579,7 @@ function generateGCode() {
                 feed, plungeFeed, spindle, rapidFeed, smartRetract
             });
             window._lastGCode = gcode;
+            markGCodeGenerated(gcode);
             visualizeToolpath(moves);
             document.getElementById('cnc-download').disabled = false;
 
@@ -1933,6 +1973,7 @@ function generateDrillGCode() {
     });
 
     window._lastDrillGCode = gcode;
+    markGCodeGenerated(gcode);
     document.getElementById('drill-download').disabled = false;
 
     visualizeHoles(tools, invY, scale, dvMirror, boardCX);
@@ -2409,6 +2450,7 @@ function generateLaserGCode() {
             const dt = performance.now() - t0;
 
             window._lastLaserGCode = gcode;
+            markGCodeGenerated(gcode);
             document.getElementById('laser-download').disabled = false;
             visualizeLaserPath(moves);
 
@@ -2946,7 +2988,7 @@ window.addEventListener('keydown', e => {
 // ============================================================
 const drcGroup = new THREE.Group();
 drcGroup.name = 'drc-markers';
-scene.add(drcGroup);
+worldGroup.add(drcGroup);
 
 function clearDRC() {
     while (drcGroup.children.length) {
@@ -3077,7 +3119,8 @@ let measureActive = false;
 let measurePts = [];
 const measureRaycaster = new THREE.Raycaster();
 const measureNDC = new THREE.Vector2();
-const measurePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+// «Пол» — плоскость XZ (Y вверх), как в превью отправки
+const measurePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 function clearMeasure() {
     measurePts = [];
@@ -3089,7 +3132,7 @@ function clearMeasure() {
     if (el) el.innerHTML = 'ЛКМ по модели — точка 1, затем точка 2. Esc — сброс.';
 }
 
-// Точка под курсором: сначала по геометрии DXF, иначе по плоскости Z=0
+// Точка под курсором: сначала по геометрии DXF, иначе по плоскости пола (Y = 0)
 function measurePickPoint(clientX, clientY) {
     const rect = renderer.domElement.getBoundingClientRect();
     measureNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -3106,6 +3149,11 @@ function measurePickPoint(clientX, clientY) {
     return hit ? v.clone() : null;
 }
 
+// Мировая точка (Y вверх) -> координаты чертежа: X, Y (по «полу») и высота Z
+function planeXY(p) {
+    return { x: p.x, y: -p.z, z: p.y };
+}
+
 function renderMeasure() {
     while (measureGroup.children.length) {
         const c = measureGroup.children.pop();
@@ -3120,7 +3168,7 @@ function renderMeasure() {
     const scale = parseFloat(document.getElementById('cnc-scale').value) || 1;
 
     if (measurePts.length === 1) {
-        const a = measurePts[0];
+        const a = planeXY(measurePts[0]);
         el.innerHTML = 'Точка 1: (' + a.x.toFixed(3) + '; ' + a.y.toFixed(3) + '). Укажите точку 2.';
         return;
     }
@@ -3133,15 +3181,16 @@ function renderMeasure() {
     measureGroup.add(line);
 
     const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-    const dx = b.x - a.x, dy = b.y - a.y;
+    const a2 = planeXY(a), b2 = planeXY(b);
+    const dx = b2.x - a2.x, dy = b2.y - a2.y;
 
     el.innerHTML =
-        'P1 (' + a.x.toFixed(3) + '; ' + a.y.toFixed(3) + ')  →  ' +
-        'P2 (' + b.x.toFixed(3) + '; ' + b.y.toFixed(3) + ')<br>' +
+        'P1 (' + a2.x.toFixed(3) + '; ' + a2.y.toFixed(3) + ')  →  ' +
+        'P2 (' + b2.x.toFixed(3) + '; ' + b2.y.toFixed(3) + ')<br>' +
         '<b>L = ' + L.toFixed(3) + ' ед. = ' + (L * scale).toFixed(3) + ' мм</b><br>' +
         'ΔX = ' + dx.toFixed(3) + ' ед. (' + (dx * scale).toFixed(3) + ' мм)<br>' +
         'ΔY = ' + dy.toFixed(3) + ' ед. (' + (dy * scale).toFixed(3) + ' мм)' +
-        (Math.abs(b.z - a.z) > 1e-6 ? '<br>ΔZ = ' + (b.z - a.z).toFixed(3) + ' ед.' : '');
+        (Math.abs(b2.z - a2.z) > 1e-6 ? '<br>ΔZ = ' + (b2.z - a2.z).toFixed(3) + ' ед.' : '');
 }
 
 let measureDownPos = null;

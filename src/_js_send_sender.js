@@ -33,6 +33,7 @@
   const btnConnect     = $("btnConnect");
   const btnDisconnect  = $("btnDisconnect");
   const btnSend        = $("btnSend");
+  const btnSendView    = $("btnSendView");
   const btnStop        = $("btnStop");
   const btnPreview     = $("btnPreview");
   const btnUseDemo     = $("btnUseDemo");
@@ -148,6 +149,7 @@
     }
     btnDisconnect.disabled = !connected;
     btnSend.disabled = !connected;
+    btnSendView.disabled = !connected;
     btnStop.disabled = !connected;
     btnResetColors.disabled = !connected;
 
@@ -1383,6 +1385,7 @@
   });
   btnDisconnect.addEventListener("click", disconnect);
   btnSend.addEventListener("click", startSend);
+  btnSendView.addEventListener("click", startSend);
   btnStop.addEventListener("click", () => stopSend(true));
 
   btnResetColors.addEventListener("click", () => {

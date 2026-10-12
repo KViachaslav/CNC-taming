@@ -1,0 +1,11 @@
+<!-- ======================= ОКНО: АНАЛИЗ ЗАЗОРОВ (DRC-lite) ===================== -->
+<div class="bl-win" id="win-drc" data-ws="gen" data-label="Анализ зазоров">
+  <div class="bl-win-head"><svg class="ic ic-14"><use href="#i-xray"/></svg><span class="title">Анализ зазоров (DRC-lite)</span><span class="x" data-close>✕</span></div>
+  <div class="bl-win-body">
+    <div class="cnc-row"><label>Макс. зазор в отчёте (мм)</label><input type="number" id="drc-max-gap" value="0.5" step="0.05" min="0.05"></div>
+    <button class="cnc-btn" id="drc-generate">Анализировать зазоры</button>
+    <button class="cnc-btn" id="drc-clear">Сбросить маркеры</button>
+    <div id="drc-info">Зазоры между медными зонами, проверка проходимости фрезы.</div>
+    <div class="cnc-hint">Маркеры узких зазоров выводятся прямо в 3D-виде (красные точки) и описаны в отчёте ниже.</div>
+  </div>
+</div>

@@ -1,0 +1,29 @@
+<!-- ========================= ОКНО: ФРЕЗЕРОВКА (mill.nc) ========================= -->
+<div class="bl-win" id="win-mill" data-ws="gen" data-label="Фрезер">
+  <div class="bl-win-head"><svg class="ic ic-14"><use href="#i-addcube"/></svg><span class="title">ЧПУ — фрезеровка (G-code)</span><span class="x" data-close>✕</span></div>
+  <div class="bl-win-body">
+    <div class="file-upload"><label for="dxf-file-input">DXF-файл</label><input type="file" id="dxf-file-input" accept=".dxf"></div>
+    <div class="cnc-row"><label>Подача (мм/мин)</label><input type="number" id="cnc-feed" value="600" step="50"></div>
+    <div class="cnc-row"><label>Глубина Z (мм)</label><input type="number" id="cnc-depth" value="-0.5" step="0.1"></div>
+    <div class="cnc-row"><label>Проходов по Z</label><input type="number" id="cnc-passes" value="1" step="1" min="1"></div>
+    <div class="cnc-row"><label>Безопасная Z (мм)</label><input type="number" id="cnc-safe-z" value="2" step="0.5"></div>
+    <div class="cnc-row"><label>Масштаб (ед.→мм)</label><input type="number" id="cnc-scale" value="1" step="0.01"></div>
+    <div class="cnc-sep">Параметры фрезы и шагов</div>
+    <div class="cnc-row"><label>Радиус фрезы (мм)</label><input type="number" id="cnc-tool-r" value="0.1" step="0.1" min="0"></div>
+    <div class="cnc-row"><label>Проходов оффсета</label><input type="number" id="cnc-step-count" value="5" step="1" min="0"></div>
+    <div class="cnc-row"><label>Шаг оффсета (мм)</label><input type="number" id="cnc-step-over" value="0.2" step="0.05" min="0.01"></div>
+    <div class="cnc-row"><label>Ширина линии по умолч. (мм)</label><input type="number" id="cnc-line-width" value="0.1" step="0.05" min="0"></div>
+    <div class="cnc-sep">Режимы резания</div>
+    <div class="cnc-row"><label>Подача врезания (мм/мин)</label><input type="number" id="cnc-plunge-feed" value="100" step="10" min="1"></div>
+    <div class="cnc-row"><label>Обороты шпинделя (об/мин)</label><input type="number" id="cnc-spindle" value="1000" step="100" min="0"></div>
+    <div class="cnc-row"><label>Ускоренный ход G0 (мм/мин)</label><input type="number" id="cnc-rapid-feed" value="3000" step="100" min="1"></div>
+    <div class="cnc-row"><label><input type="checkbox" id="cnc-invert-y"> Инвертировать Y</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="cnc-mirror-x"> Отразить по X (зеркало, центр платы)</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="cnc-only-visible" checked> Только видимые слои</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="cnc-show-path" checked> Показывать путь</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="cnc-smart-retract" checked> Умный отвод (не поднимать зря)</label></div>
+    <button class="cnc-btn" id="cnc-generate">Сгенерировать G-code</button>
+    <button class="cnc-btn" id="cnc-download" disabled>Скачать mill.nc</button>
+    <div id="cnc-info"></div>
+  </div>
+</div>

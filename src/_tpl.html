@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CNC Suite — генерация и отправка G-code</title>
+<style>
+/*__BL_CSS__*/
+
+/* =====================================================================
+   CNC Suite: дополнения к теме Blender
+   (вьюпорт, плавающие окна, виджеты в стиле Blender, консоль/лог)
+   ===================================================================== */
+:root{ --mono:ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace; }
+
+/* ------------------------- рабочее пространство вьюпорта ------------------------- */
+.bl-canvas{position:relative}
+.ws-view{position:absolute;inset:0;display:none}
+.ws-view.active{display:block}
+/* высота/ширина по родителю: модули 3D-превью ставят контейнеру position:relative
+   (для оверлея загрузки), поэтому inset:0 здесь не подходит */
+.three-host{position:relative;width:100%;height:100%;overflow:hidden}
+.three-host>canvas{display:block}
+.vp-note{position:absolute;left:10px;bottom:8px;z-index:6;max-width:66%;pointer-events:none;
+  color:#c4c4c4;font-size:10px;background:#00000059;border-radius:4px;padding:2px 6px}
+.vp-note .mono,.vp-note b{font-family:var(--mono)}
+.vp-note b{color:#e6e6e6}
+.vp-overlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;display:none;
+  background:#181818ee;box-shadow:0 0 0 1px #ffffff1f,0 8px 24px #000000aa;border-radius:6px;
+  padding:10px 16px;color:#e6e6e6}
+.vp-error{position:absolute;left:10px;bottom:36px;z-index:21;display:none;max-width:70%;
+  background:#3a1010ee;box-shadow:0 0 0 1px #ff335566;border-radius:4px;padding:6px 8px;
+  color:#ffb3b3;font:11px/1.45 var(--mono);white-space:pre-wrap}
+.vp-stop{position:absolute;right:12px;bottom:12px;z-index:12;height:28px;padding:0 16px;cursor:default;
+  border:1px solid #7a2222;border-radius:4px;background:#8c2b2b;color:#fff;font:inherit;font-weight:600}
+.vp-stop:hover{background:#a33535}
+.vp-stop:disabled{opacity:.5}
+
+/* ------------------------- плавающие окна (левый край правой колонки) ------------ */
+.win-layer{position:absolute;inset:0;z-index:40;pointer-events:none}
+.bl-win{position:absolute;top:6px;right:6px;width:306px;max-height:calc(100% - 12px);display:none;
+  flex-direction:column;pointer-events:auto;overflow:hidden;background:var(--panel-back);border-radius:6px;
+  box-shadow:0 0 0 1px #00000066,0 10px 28px #00000099}
+.bl-win.show{display:flex}
+.bl-win-head{flex:none;display:flex;align-items:center;gap:6px;height:24px;padding:0 6px;
+  background:var(--panel-header);border-bottom:1px solid var(--panel-line);
+  color:var(--panel-title);font-weight:500}
+.bl-win-head .title{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-win-head .x{width:18px;height:18px;display:grid;place-items:center;border-radius:4px;color:#cfcfcf;cursor:default}
+.bl-win-head .x:hover{background:#ffffff1f;color:#fff}
+.bl-win-body{flex:1 1 auto;min-height:0;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:2px}
+.bl-win-body::-webkit-scrollbar,.bl-props-body::-webkit-scrollbar{width:11px}
+.bl-win-body::-webkit-scrollbar-thumb,.bl-props-body::-webkit-scrollbar-thumb{
+  background:var(--w-inner);border-radius:6px;border:3px solid transparent;background-clip:content-box}
+
+/* ------------------------- поля/кнопки: стиль Blender ---------------------------- */
+.bl-win input[type=number],.bl-win input[type=text],.bl-win select{
+  height:var(--h-widget);width:84px;flex:none;padding:0 4px;color:var(--w-text);background:var(--w-item);
+  border:1px solid var(--w-outline);border-radius:var(--w-round);font:inherit;outline:none}
+.bl-win textarea{width:100%;min-height:130px;padding:4px 5px;color:var(--w-text);background:var(--w-item);
+  border:1px solid var(--w-outline);border-radius:var(--w-round);font:11px/1.4 var(--mono);outline:none;
+  resize:vertical;white-space:pre;overflow:auto}
+.bl-win input:focus,.bl-win select:focus,.bl-win textarea:focus{border-color:var(--w-sel)}
+.bl-win input[type=checkbox]{-webkit-appearance:none;appearance:none;width:14px;height:14px;flex:none;margin:0;
+  position:relative;cursor:default;border:1px solid var(--w-outline);border-radius:3px;background:var(--w-inner)}
+.bl-win input[type=checkbox]:checked{background:var(--w-sel);border-color:var(--w-sel)}
+.bl-win input[type=checkbox]:checked::after{content:"";position:absolute;left:3px;top:-1px;width:4px;height:8px;
+  border:2px solid #fff;border-top:0;border-left:0;transform:rotate(45deg)}
+.bl-win button{height:var(--h-widget);padding:0 8px;cursor:default;white-space:nowrap;color:var(--w-text);
+  background:var(--w-inner);border:1px solid var(--w-outline);border-radius:var(--w-round);font:inherit}
+.bl-win button:hover:not(:disabled){background:#606060}
+.bl-win button:active:not(:disabled),.bl-win button.active{background:var(--w-sel);border-color:var(--w-sel);color:#fff}
+.bl-win button:disabled{opacity:.45}
+.bl-win .cnc-btn{width:100%;height:24px;margin-top:4px;flex:none}
+.bl-win .btn-ok{background:var(--w-sel);border-color:var(--w-sel);color:#fff}
+/* общий :hover-правило кнопок ниже по специфичности перебивает цвет .btn-ok/.btn-danger,
+   поэтому акцентные кнопки подсвечиваются своими оттенками (как .btn-danger ниже) */
+.bl-win .btn-ok:hover:not(:disabled){background:#5a86c8;border-color:#5a86c8}
+.bl-win .btn-ok:active:not(:disabled){background:#3f67a3;border-color:#3f67a3}
+.bl-win .btn-danger{background:#7a2b2b;border-color:#8c3333;color:#fff}
+.bl-win .btn-danger:hover:not(:disabled){background:#9a3535}
+
+/* ------------------------------ строки параметров ------------------------------- */
+.bl-win .cnc-row{display:flex;align-items:center;gap:6px;min-height:22px}
+.bl-win .cnc-row>label{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--w-text)}
+.bl-win .cnc-sep{margin:6px 0 2px;padding-top:6px;border-top:1px solid var(--panel-line);
+  color:#9c9c9c;font-size:10px}
+.bl-win .cnc-hint,.bl-win .hmHint{color:#9c9c9c;font-size:10px;line-height:1.45}
+.bl-win .mono,.bl-win .kbd{font-family:var(--mono)}
+.bl-win .kbd{background:#00000040;border-radius:3px;padding:0 3px}
+.bl-win .file-upload,.bl-win .file-upload label{display:flex;align-items:center;gap:6px}
+.bl-win .file-upload input[type=file]{flex:1 1 auto;min-width:0;color:#b8b8b8;font-size:10px}
+.bl-win .panelTitle{display:flex;align-items:center;justify-content:space-between;gap:6px;color:#dcdcdc;
+  font-weight:500;margin:6px 0 2px;padding-top:5px;border-top:1px solid var(--panel-line)}
+.bl-win .btn-row{display:flex;gap:4px;margin-top:4px}
+.bl-win .btn-row>*{flex:1 1 0;min-width:0}
+.bl-win .btn-row.one>*{flex:1 1 auto}
+.bl-win .btn-row.three>*{font-size:10px;padding:0 2px}
+.bl-win .warnBox{color:#ffb3b3;background:#00000033;border-radius:4px;padding:4px 6px;
+  font-size:10px;line-height:1.45;margin-top:6px}
+.bl-win .small{color:#9c9c9c;font-size:10px;line-height:1.45}
+/* ------------------------------ информационные блоки ---------------------------- */
+#cnc-info,#laser-info,#drill-info,#drc-info,#measure-info{margin-top:4px;color:#a8a8a8;font-size:10.5px;
+  line-height:1.45;white-space:pre-wrap;word-break:break-word}
+#laser-info b,#drill-info b,#cnc-info b{color:#e6e6e6}
+/* ------------------------------ списки слоёв ------------------------------------ */
+#layers-list{display:flex;flex-direction:column;gap:1px}
+.layer-item{display:flex;align-items:center;gap:6px;height:22px;padding:0 4px;border-radius:4px;color:#dcdcdc}
+.layer-item:hover{background:#ffffff12}
+.layer-item>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer-color-badge{width:12px;height:12px;flex:none;border-radius:3px;box-shadow:0 0 0 1px #00000066}
+.layer-item input[type=checkbox]{-webkit-appearance:none;appearance:none;width:14px;height:14px;flex:none;
+  margin:0;position:relative;cursor:default;border:1px solid var(--w-outline);border-radius:3px;background:var(--w-inner)}
+.layer-item input[type=checkbox]:checked{background:var(--w-sel);border-color:var(--w-sel)}
+.layer-item input[type=checkbox]:checked::after{content:"";position:absolute;left:3px;top:-1px;width:4px;height:8px;
+  border:2px solid #fff;border-top:0;border-left:0;transform:rotate(45deg)}
+#laser-layers{display:flex;flex-direction:column;gap:2px}
+.laser-layer-row{display:flex;align-items:center;gap:4px;font-size:10.5px}
+.laser-layer-row .name{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#bbb}
+.laser-layer-row input[type=number]{width:48px}
+.laser-layer-row input[type=checkbox]{-webkit-appearance:none;appearance:none;width:14px;height:14px;flex:none;
+  margin:0;position:relative;cursor:default;border:1px solid var(--w-outline);border-radius:3px;background:var(--w-inner)}
+.laser-layer-row input[type=checkbox]:checked{background:var(--w-sel);border-color:var(--w-sel)}
+.laser-layer-row input[type=checkbox]:checked::after{content:"";position:absolute;left:3px;top:-1px;width:4px;height:8px;
+  border:2px solid #fff;border-top:0;border-left:0;transform:rotate(45deg)}
+#laser-fill-opts{display:none;flex-direction:column;gap:2px;padding-left:8px;border-left:2px solid #ffffff14}
+.drill-tool-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #ffffff0f}
+/* ------------------------------ правая колонка ---------------------------------- */
+.bl-props-body{flex:1 1 auto;min-height:0;overflow:auto;padding:2px 0 6px}
+.bl-panel-gap{height:2px;flex:none}
+.bl-legend{display:flex;flex-direction:column;gap:3px;color:#cfcfcf}
+.bl-legend>div{display:flex;align-items:center;gap:6px}
+.swatch{width:14px;height:10px;flex:none;border-radius:2px}
+.dot{width:9px;height:9px;flex:none;border-radius:50%}
+
+/* ------------------------------ пульт / GcodeAir -------------------------------- */
+.mpos{display:flex;gap:6px;margin:2px 0}
+.mpos>div{flex:1 1 0;display:flex;align-items:baseline;gap:4px;padding:3px 6px;background:var(--w-item);
+  border:1px solid var(--w-outline);border-radius:4px;font-family:var(--mono)}
+.mpos b{color:#9c9c9c;font-weight:600}
+.coordGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:4px 0}
+.coordCell{display:flex;flex-direction:column;gap:3px;padding:4px;background:var(--panel-sub);border-radius:4px}
+.coordCell b{color:#9c9c9c;font-size:10px;font-weight:600}
+.coordCell input,.coordCell button{width:100%;flex:none}
+.jogGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px}
+.jogBtn{height:30px;font-weight:600}
+.machineState{font-family:var(--mono);color:#7ff0c8}
+.hmGrid{display:flex;flex-direction:column;gap:5px}
+.hmPair{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.hmPair>div{display:flex;align-items:center;gap:6px}
+.hmPair label{flex:1 1 auto;min-width:0;color:var(--w-text)}
+.hmPair input[type=number]{width:70px}
+.hmBox{max-height:220px;overflow:auto;margin-top:4px;padding:4px;border:1px solid var(--w-outline);
+  border-radius:4px;background:#00000026}
+.hmTable{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:10.5px}
+.hmTable th,.hmTable td{padding:2px 6px;border:1px solid var(--w-outline);text-align:center;white-space:nowrap}
+.hmTable th{color:#9c9c9c}
+.hmTable td.ok{color:#7ff0c8}
+.hmTable td.bad{color:#ff9fb2}
+.hmTable td.now{outline:1px solid var(--w-sel)}
+.hmMsg{margin-top:4px;min-height:26px;color:#9c9c9c;font-family:var(--mono);font-size:10.5px;
+  white-space:pre-wrap;word-break:break-word}
+.pill{display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:5px 6px;background:var(--panel-sub);border-radius:4px}
+.pill .meta{display:flex;flex-direction:column;min-width:0}
+.pill .meta b{color:#e6e6e6}
+.pill .meta span{color:#9c9c9c;font-size:10px}
+#dotConn{width:10px;height:10px;background:#c0392b}
+#dotConn.ok,#dotConn.good{background:#2ecc71}
+#dotConn.bad,#dotConn.err{background:#c0392b}
+.progress-bar{height:6px;overflow:hidden;margin-top:6px;background:var(--w-item);
+  border:1px solid var(--w-outline);border-radius:4px}
+.progress-fill{height:100%;width:0;background:var(--w-sel);transition:width .12s linear}
+#log{min-height:150px;max-height:420px;overflow:auto;padding:4px 6px;color:#cfcfcf;background:#00000033;
+  border:1px solid var(--panel-line);border-radius:4px;font:11px/1.45 var(--mono);white-space:pre-wrap;word-break:break-word}
+.loading-overlay{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:#0a0a1acc}
+.loading-spinner{display:flex;flex-direction:column;align-items:center;gap:8px;color:#cfcfcf;font-size:11px}
+.spinner{width:22px;height:22px;border:2px solid #ffffff33;border-top-color:var(--w-sel);border-radius:50%;
+  animation:cncspin .8s linear infinite}
+@keyframes cncspin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body data-ws="gen">
+
+<!--__BL_ICONS__-->
+<div class="bl-app" id="app">
+
+<!-- ============================== ВЕРХНЯЯ ПАНЕЛЬ ============================== -->
+<header class="bl-topbar" id="topbar">
+  <button class="bl-appicon" data-menu="app" data-tip="CNC Suite" data-tip-desc="Генерация и отправка G-code: DXF → mill / laser / drill, отправка на ESP8266 (GRBL).">
+    <svg class="ic ic-20"><use href="#i-logo"/></svg>
+  </button>
+  <div class="bl-menubar" id="menubar">
+    <button data-menu="file">Файл</button>
+    <button data-menu="winGen">Окно. Генератор</button>
+    <button data-menu="winSend">Окно. Отправка</button>
+  </div>
+  <div class="bl-workspaces" id="workspaces">
+    <div class="bl-ws active" data-ws="gen" data-tip="Генерация G-code" data-tip-desc="DXF → фрезеровка, лазер, сверловка, DRC, измерение.">Генерация G-code</div>
+    <div class="bl-ws" data-ws="send" data-tip="Отправка G-code" data-tip-desc="Подключение, пульт, карта высот, отправка на контроллер.">Отправка G-code</div>
+  </div>
+  <div class="bl-topbar-right"></div>
+</header>
+
+<div class="bl-main" id="main">
+<div class="bl-upper" id="upper">
+
+<!-- ================================ 3D-ВЬЮПОРТ ================================ -->
+<section class="bl-area bl-view3d" id="areaView3D">
+  <div class="bl-header" id="v3dHeader">
+    <button class="bl-editortype" data-menu="editorType" data-tip="Тип редактора" data-tip-desc="Переключить рабочее пространство 3D-вида."><svg class="ic"><use href="#i-view3d"/></svg></button>
+    <button class="bl-hdr-menu" data-menu="editorType" data-tip="Рабочая область" data-tip-desc="Активное 3D-представление."><svg class="ic ic-14"><use href="#i-outliner"/></svg><span class="lbl" id="hdrWsLabel">Генерация G-code</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+    <span class="sp"></span>
+    <span class="bl-hdr-menu" data-tip="Навигация вьюпорта" data-tip-key="ЛКМ / ПКМ / колесо" data-tip-desc="ЛКМ — вращение, ПКМ — панорама, колесо — зум."><svg class="ic ic-14"><use href="#i-cursor3d"/></svg>3D-вид</span>
+  </div>
+
+  <div class="bl-canvas" id="canvasArea">
+
+    <!-- ------------------- рабочее пространство: генерация ------------------- -->
+    <div class="ws-view active" data-ws="gen" id="wsGenView">
+      <div id="canvas-container" class="three-host"></div>
+      <div class="vp-note" id="stats">Загрузите DXF-файл для построения 3D-модели</div>
+      <div class="vp-overlay" id="loading">Обработка DXF…</div>
+      <div class="vp-error" id="error-log"></div>
+    </div>
+
+    <!-- ------------------- рабочее пространство: отправка ------------------- -->
+    <div class="ws-view" data-ws="send" id="wsSendView">
+      <div id="canvas3dContainer" class="three-host"></div>
+      <div class="vp-note" id="sendNote"><b>Габарит</b> <span class="mono" id="bbInfo">—</span> · <b>Инструмент</b> <span class="mono" id="toolPos">—</span> · G1: <span class="mono" id="g1SegInfo">0</span> · G0: <span class="mono" id="g0SegInfo">0</span> · Отправлено: <span class="mono" id="sentCount">0</span>/<span class="mono" id="totalCount">0</span></div>
+      <button class="vp-stop" id="btnStop" disabled>■ Стоп</button>
+    </div>
+
+    <!-- ------------------------- плавающие окна (по одному) ------------------ -->
+    <div class="win-layer" id="winLayer">
+<!--__WINDOWS__-->
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================== ПРАВАЯ КОЛОНКА ============================= -->
+<div class="bl-rightcol" id="rightCol">
+  <section class="bl-area bl-properties" id="areaProps">
+    <div class="bl-header" id="propsHeader">
+      <button class="bl-editortype" data-tip="Панель свойств" data-tip-desc="Слои, легенда и консоль GRBL."><svg class="ic"><use href="#i-settings"/></svg></button>
+      <span class="bl-hdr-menu" id="propsTitle">Слои и легенда</span>
+      <span class="sp"></span>
+    </div>
+    <div class="bl-props-body">
+      <div id="panelGen">
+        <div class="bl-panel">
+          <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span><span class="title">Слои DXF</span><span class="tools" id="layers-count">(0)</span></div>
+          <div class="bl-panel-body"><div id="layers-list"></div></div>
+        </div>
+        <div class="bl-panel">
+          <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span><span class="title">Легенда</span></div>
+          <div class="bl-panel-body">
+            <div class="bl-legend">
+              <div><span class="swatch" style="background:#ffcc00"></span><b>G0</b> — холостой ход</div>
+              <div><span class="swatch" style="background:#33ff66"></span><b>G1</b> — рабочая подача</div>
+              <div><span class="swatch" style="background:#ff3355;height:8px;width:8px;border-radius:50%"></span><b>Врезание</b></div>
+              <div><span class="dot" style="background:#ffa94d"></span><b>Отверстия</b></div>
+              <div><span class="dot" style="background:#33ddff"></span><b>Измерение</b></div>
+              <div><span class="dot" style="background:#ff3355"></span><b>Узкий зазор</b></div>
+              <div><span class="swatch" style="background:#ff5566"></span><b>Лазер G1</b> — гравировка</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="panelSend" hidden>
+        <div class="bl-panel">
+          <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span><span class="title">Консоль GRBL</span></div>
+          <div class="bl-panel-body"><div id="log"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+</div>
+</div>
+
+<div class="bl-statusbar" id="statusbar">
+  <span class="hint" id="statusHint">Готово. ЛКМ — вращение, ПКМ — панорама, колесо — зум.</span>
+  <span class="spring"></span>
+  <span class="stat" id="statusWs">Рабочая область: Генерация G-code</span>
+</div>
+
+<div class="bl-menu-layer" id="menuLayer"></div>
+<div class="bl-tip" id="tip"></div>
+</div>
+<!--END-->
+
+
+
+

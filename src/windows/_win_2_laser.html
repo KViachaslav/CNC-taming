@@ -1,0 +1,48 @@
+<!-- ========================= ОКНО: ЛАЗЕР (laser.gcode) ========================= -->
+<div class="bl-win" id="win-laser" data-ws="gen" data-label="Лазер">
+  <div class="bl-win-head"><svg class="ic ic-14"><use href="#i-record"/></svg><span class="title">Лазер — гравировка (G-code)</span><span class="x" data-close>✕</span></div>
+  <div class="bl-win-body">
+    <div class="cnc-row"><label>Масштаб (ед.→мм)</label><input type="number" id="laser-scale" value="1" step="0.01"></div>
+    <div class="cnc-row"><label>Сглаживание дуг (мм/сегм.)</label><input type="number" id="laser-seg-len" value="0.5" step="0.1" min="0.05"></div>
+    <div class="cnc-row"><label>Точность координат (знаков)</label><input type="number" id="laser-decimals" value="2" step="1" min="0" max="4"></div>
+    <div class="cnc-sep">Режим гравировки (как в gcodeide)</div>
+    <div class="cnc-row"><label>Режим</label>
+      <select id="laser-mode">
+        <option value="contour">Контуры (как нарисовано)</option>
+        <option value="fill-rings">Заливка: кольца от меди (krasivo)</option>
+        <option value="fill-hatch">Заливка: штриховка пустот (zapolnit)</option>
+      </select>
+    </div>
+    <div id="laser-fill-opts">
+      <div class="cnc-row"><label>Пресет пятна (gcodeide)</label>
+        <select id="laser-fill-preset">
+          <option value="altium-fill" selected>Altium заливка 0.125/0.09</option>
+          <option value="altium-scale">Altium обводка 0.105/0.07</option>
+          <option value="esyeda-fill">Esyeda заливка 0.115/0.08</option>
+          <option value="esyedapro-fill">Esyedapro заливка 0.145/0.11</option>
+          <option value="custom">свои значения</option>
+        </select>
+      </div>
+      <div class="cnc-row"><label>Номинал зазора, Y (мм)</label><input type="number" id="laser-fill-nom" value="0.09" step="0.005" min="0"></div>
+      <div class="cnc-row"><label>Анизотропия X, +мм/сторону</label><input type="number" id="laser-fill-aniso" value="0.035" step="0.005" min="0"></div>
+      <div class="cnc-row"><label>Отступ от меди X (мм)</label><input type="number" id="laser-fill-off-x" value="0.125" step="0.005" min="0"></div>
+      <div class="cnc-row"><label>Отступ от меди Y (мм)</label><input type="number" id="laser-fill-off-y" value="0.09" step="0.005" min="0"></div>
+      <div class="cnc-row"><label>Шаг колец/линий X (мм)</label><input type="number" id="laser-fill-step-x" value="0.1" step="0.01" min="0.01"></div>
+      <div class="cnc-row"><label>Шаг колец/линий Y (мм)</label><input type="number" id="laser-fill-step-y" value="0.1" step="0.01" min="0.01"></div>
+      <div class="cnc-row"><label>Число контуров</label><input type="number" id="laser-fill-passes" value="10" step="1" min="1" max="500"></div>
+      <div class="cnc-row"><label><input type="checkbox" id="laser-fill-clip" checked> Обрезать заливку по рамке платы</label></div>
+      <div class="cnc-hint">«Номинал + анизотропия» — разложение старого gcodeide: get_radius() берёт a = 0.11 (по X) и b = 0.04 (по Y), поэтому зазор на сторону = for_bufferX по Y и for_bufferX + (a − b)/2 = +0.035 по X. Правка «номинал/анизотропия» пересчитывает X/Y (X = номинал + анизотропия); можно вводить X/Y напрямую — тогда берётся введённое. Шаг колец в gcodeide — border_line_width (по умолчанию 0.07). 0/0 — первый контур по границе меди. Медь объединяется по всем отмеченным слоям (S/F/повторы — из первого отмеченного). В режиме «штриховка» используется шаг по Y (расстояние между линиями), как width_lines.</div>
+    </div>
+    <div class="cnc-sep">S — мощность, F — скорость, повторов — по слоям</div>
+    <div id="laser-layers"><div class="cnc-hint">Загрузите DXF файл...</div></div>
+    <div class="cnc-row"><label><input type="checkbox" id="laser-invert-y"> Инвертировать Y</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="laser-mirror-x"> Отразить по X (зеркало, центр платы)</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="laser-only-visible"> Только видимые слои</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="laser-optimize" checked> Оптимизировать порядок обходов</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="laser-comments"> Комментарии «( … )» в G-code</label></div>
+    <div class="cnc-row"><label><input type="checkbox" id="laser-show-path" checked> Показывать путь</label></div>
+    <button class="cnc-btn" id="laser-generate">Сгенерировать лазерный G-code</button>
+    <button class="cnc-btn" id="laser-download" disabled>Скачать laser.gcode</button>
+    <div id="laser-info">G90 / G21 / M4 S0 … M5 S0 — тот же формат, что в gcodeide.</div>
+  </div>
+</div>

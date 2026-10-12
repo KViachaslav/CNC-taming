@@ -1,0 +1,24 @@
+# --- перегенерируемые отчёты сборки/проверки ---
+/build_report.txt
+/verify_report.txt
+/ids_report.txt
+/classes_report.txt
+/_inspect.txt
+/_inspect2.txt
+
+# --- артефакты headless Chrome: probe / shot / логи ---
+/_probe*.html
+/_probe*_out.txt
+/_probe*.log
+/_shot_*.html
+/_shot_*.log
+/_shotrun_*.log
+/_chrome_*.txt
+/_dom*.txt
+/_build_run.txt
+/_verify_out.txt
+/_verify_run.txt
+/_hashcmp.txt
+
+# --- профили Chrome (--user-data-dir) ---
+/_cprofile*/

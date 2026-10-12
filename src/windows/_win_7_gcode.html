@@ -1,0 +1,20 @@
+<!-- ============================= ОКНО: G-CODE ================================== -->
+<div class="bl-win" id="win-gcode" data-ws="send" data-label="G-code">
+  <div class="bl-win-head"><svg class="ic ic-14"><use href="#i-text"/></svg><span class="title">Программа G-code</span><span class="x" data-close>✕</span></div>
+  <div class="bl-win-body">
+    <textarea id="gcode" spellcheck="false" placeholder="Вставьте сюда ваш G-code..."></textarea>
+    <div class="cnc-hint">Превью строится по строкам с <span class="kbd">X</span>/<span class="kbd">Y</span> и командами <span class="kbd">G0</span>, <span class="kbd">G1</span>. При отправке линии <span class="kbd">G1</span> меняют цвет на зелёный.</div>
+    <div class="btn-row">
+      <button class="btn-ok" id="btnPreview">Обновить превью</button>
+      <button id="btnUseDemo">Загрузить демо</button>
+    </div>
+    <div class="btn-row">
+      <button id="btnLoadFile">Открыть файл</button>
+      <button id="btnResetColors" disabled>Сбросить цвета</button>
+    </div>
+    <div class="btn-row one">
+      <button class="btn-ok" id="btnSend" disabled>Отправить</button>
+    </div>
+    <input id="fileInput" type="file" style="display:none" accept=".gcode,.txt,.nc" />
+  </div>
+</div>

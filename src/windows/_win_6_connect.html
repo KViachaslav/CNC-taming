@@ -1,0 +1,23 @@
+<!-- ==================== ОКНО: ПОДКЛЮЧЕНИЕ (ESP8266 / WebSocket) ================== -->
+<div class="bl-win" id="win-connect" data-ws="send" data-label="Подключение">
+  <div class="bl-win-head"><svg class="ic ic-14"><use href="#i-pin"/></svg><span class="title">Подключение к контроллеру</span><span class="x" data-close>✕</span></div>
+  <div class="bl-win-body">
+    <div class="pill">
+      <div id="dotConn" class="dot"></div>
+      <div class="meta">
+        <b id="connTitle">Не подключено</b>
+        <span id="connSub">Ожидание устройства...</span>
+      </div>
+    </div>
+    <div class="cnc-row"><label>IP</label><input id="IP" type="text" value="192.168.100.58"></div>
+    <div class="cnc-row"><label>Port</label><input id="Port" type="number" value="81" min="0" step="1"></div>
+    <div class="cnc-row"><label>Окно (строк в полёте)</label><input id="window" type="number" value="4" min="1" max="16" step="1"></div>
+    <div class="cnc-row"><label>Очередь (ESP / клиент)</label><input id="queueInfo" type="text" value="ESP: — | клиент: —" readonly></div>
+    <div class="btn-row">
+      <button class="btn-ok" id="btnConnect">Подключить</button>
+      <button class="btn-danger" id="btnDisconnect" disabled>Отключить</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="cnc-hint">⚡ Оптимизированная визуализация: тысячи линий без зависаний. Стоп-кнопка вынесена в 3D-вид.</div>
+  </div>
+</div>

@@ -1,0 +1,3016 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blender — UI replica (HTML/CSS/JS)</title>
+<style>
+/* =========================================================================
+   Тема. Значения взяты из официального тёмного оформления Blender
+   (release/datafiles/userdef/userdef_default_theme.c, const bTheme U_theme_default).
+   Имена переменных повторяют имена полей темы (wcol_*, panel_*, space_*, tui.*).
+   ========================================================================= */
+:root{
+  /* tui.widget_* */
+  --w-inner:#545454;           /* wcol_regular.inner */
+  --w-outline:#3d3d3d;         /* wcol_regular.outline */
+  --w-sel:#4772b3;             /* wcol_regular.inner_sel */
+  --w-text:#e6e6e6;            /* wcol_regular.text */
+  --w-item:#1d1d1d;            /* wcol_regular.item */
+  --w-toggle-item:#252525;
+  --w-round:4px;               /* roundness 0.2 * 20px */
+  --w-col:#ffffffb3;           /* wcol_toolbar_item.item */
+  --w-tool-item:#282828;       /* wcol_toolbar_item.inner */
+
+  /* меню */
+  --menu-back:#181818;         /* wcol_menu_back.inner */
+  --menu-back-outline:#242424; /* wcol_menu_back.outline */
+  --menu-text:#dddddd;         /* wcol_menu_item.text */
+  --menu-text-dim:#999999;
+  --menu-sel:#4772b3;          /* wcol_menu_item.inner_sel */
+  --menu-sep:#2b2b2b;
+
+  /* тултип */
+  --tip-back:#1d1d1d;          /* wcol_tooltip.inner */
+  --tip-outline:#242424;       /* wcol_tooltip.outline */
+  --tip-text:#d9d9d9;
+
+  /* окна и регионы */
+  --editor-border:#161616;     /* tui.editor_border */
+  --editor-outline:#ffffff15;  /* tui.editor_outline */
+  --space-back:#303030;        /* space_properties.back */
+  --header:#303030;            /* space_*.header (#303030b3) */
+  --header-text:#e6e6e6;
+  --space-back-alt:#2a2a2a;
+  --topbar:#181818;            /* space_topbar.header (#181818b3) */
+  --status-text:#838383;       /* space_statusbar.text */
+  --tab-inner:#1d1d1d;         /* wcol_tab.inner */
+  --tab-active:#303030;        /* wcol_tab.inner_sel */
+  --tab-text:#989898;          /* wcol_tab.text */
+  --tab-text-active:#ffffff;
+
+  /* 3D вьюпорт */
+  --view3d-top:#3d3d3d;        /* space_view3d.back + градиент */
+  --view3d-bottom:#1f1f1f;
+  --grid:rgba(84,84,84,.5);    /* space_view3d.grid #54545480 */
+  --grid-major:#545454;        /* space_view3d.grid_major */
+  --axis-x:#ff3352;            /* tui.xaxis */
+  --axis-y:#8bdc00;            /* tui.yaxis */
+  --axis-z:#2890ff;            /* tui.zaxis */
+  --sel-outline:#ed5700;       /* space_view3d.select */
+  --active-outline:#ffa028;    /* space_view3d.active */
+
+  /* панели (Tabs & Panels) */
+  --panel-back:#3d3d3d;        /* tui.panel_back */
+  --panel-header:#3d3d3d;      /* tui.panel_header */
+  --panel-title:#e6e6e6;       /* tui.panel_title */
+  --panel-line:#ffffff11;      /* tui.panel_outline */
+  --panel-sub:rgba(0,0,0,.12); /* tui.panel_sub_back #0000001f */
+  --panel-active:#4772b3;      /* tui.panel_active */
+
+  /* иконки данных */
+  --icon:#cccccc;              /* tui.icon_scene */
+  --icon-object:#e19658;       /* tui.icon_object */
+  --icon-data:#00d4a3;         /* tui.icon_object_data */
+  --icon-modifier:#74a2ff;     /* tui.icon_modifier */
+  --icon-shading:#cc6670;      /* tui.icon_shading */
+  --icon-collection:#ffffff;   /* tui.icon_collection */
+  --icon-folder:#ccad63;       /* tui.icon_folder */
+  --axis-w:#edba18;            /* tui.waxis */
+
+  /* размеры (UI scale 1.0) */
+  --h-topbar:26px; --h-header:26px; --h-panel:20px; --h-widget:19px;
+  --h-row:22px; --navbar-w:30px; --font:11px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font:var(--font)/1.32 Inter,"Segoe UI","DejaVu Sans",system-ui,-apple-system,sans-serif;
+  font-variant-numeric:tabular-nums;
+  color:var(--w-text);background:var(--editor-border);overflow:hidden;
+  -webkit-font-smoothing:antialiased;user-select:none;cursor:default;
+}
+.bl-icons{position:absolute;width:0;height:0;overflow:hidden}
+.ic{width:16px;height:16px;flex:none;display:block;pointer-events:none}
+.ic-12{width:12px;height:12px}.ic-14{width:14px;height:14px}
+.ic-20{width:20px;height:20px}.ic-24{width:24px;height:24px}
+.bl-dim{color:#a0a0a0}
+.bl-hidden{display:none !important}
+
+/* ============================ общие виджеты ============================= */
+.bl-btn{
+  height:var(--h-widget);display:inline-flex;align-items:center;gap:5px;padding:0 6px;
+  border:1px solid var(--w-outline);border-radius:var(--w-round);background:var(--w-inner);
+  color:var(--w-text);font:inherit;white-space:nowrap;overflow:hidden;flex:1 1 auto;min-width:0;
+}
+.bl-btn:hover{background:#606060}
+.bl-btn:active,.bl-btn.on{background:var(--w-sel);color:#fff;border-color:var(--w-sel)}
+.bl-btn .lbl{overflow:hidden;text-overflow:ellipsis;flex:1 1 auto}
+.bl-btn.icon-only{flex:none;width:var(--h-widget);justify-content:center;padding:0}
+.bl-btn.flat{border-color:transparent;background:transparent}
+.bl-btn.flat:hover{background:#ffffff14}
+.bl-btn.flat.on{background:var(--w-sel);color:#fff}
+.bl-num{
+  height:var(--h-widget);display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--w-outline);border-radius:var(--w-round);background:var(--w-inner);
+  color:var(--w-text);overflow:hidden;position:relative;flex:1 1 0;min-width:0;padding:0 4px;
+}
+.bl-num>.fill{position:absolute;inset:0;background:var(--w-sel);opacity:.8}
+.bl-num>span{position:relative;z-index:1}
+.bl-num:hover{background:#606060}
+.bl-field{
+  height:var(--h-widget);display:flex;align-items:center;gap:4px;padding:0 5px;
+  border:1px solid var(--w-outline);border-radius:var(--w-round);background:var(--w-item);
+  flex:1 1 auto;min-width:0;
+}
+.bl-field>.lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-field input{border:0;background:none;color:inherit;font:inherit;width:100%;min-width:0;outline:none;padding:0}
+.bl-field:focus-within{border-color:var(--w-sel)}
+.bl-swatch{width:var(--h-widget);height:var(--h-widget);border-radius:var(--w-round);
+  border:1px solid var(--w-outline);flex:none}
+.bl-check{
+  width:14px;height:14px;flex:none;border-radius:3px;border:1px solid var(--w-outline);
+  background:var(--w-inner);display:grid;place-items:center;color:transparent;
+}
+.bl-check.on{background:var(--w-sel);border-color:var(--w-sel);color:#fff}
+.bl-chkrow{display:flex;align-items:center;gap:6px;min-height:var(--h-row);color:var(--w-text)}
+.bl-chkrow>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-enum{display:flex;flex:1 1 auto;min-width:0;height:var(--h-widget)}
+.bl-enum .bl-btn{border-radius:0;margin-left:-1px;justify-content:center}
+.bl-enum .bl-btn:first-child{border-radius:var(--w-round) 0 0 var(--w-round);margin-left:0}
+.bl-enum .bl-btn:last-child{border-radius:0 var(--w-round) var(--w-round) 0}
+.bl-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;flex:1 1 auto;min-width:0}
+.bl-row{display:flex;align-items:center;gap:6px;min-height:var(--h-row)}
+.bl-row>.label{width:84px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-row>.label.right{text-align:right}
+.bl-list{display:flex;flex-direction:column}
+.bl-li{display:flex;align-items:center;gap:6px;height:var(--h-row);padding:0 4px;
+  border-radius:var(--w-round);color:#cccccc}
+.bl-li>.lbl{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-li:hover{background:#ffffff12}
+.bl-li.sel{background:var(--w-sel);color:#fff}
+.bl-note{color:#a0a0a0;padding:2px 0}
+
+/* ============================== сплиттеры =============================== */
+.bl-split{flex:none;background:var(--editor-border);position:relative;z-index:5}
+.bl-split[data-axis="x"]{width:3px;cursor:col-resize}
+.bl-split[data-axis="y"]{height:3px;cursor:row-resize}
+.bl-split:hover,.bl-split.drag{background:var(--w-sel)}
+
+/* ================================ topbar ================================ */
+.bl-app{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--editor-border)}
+.bl-topbar{
+  height:var(--h-topbar);flex:none;display:flex;align-items:stretch;
+  background:var(--topbar);position:relative;z-index:80;padding:0 2px;
+}
+.bl-appicon{
+  width:26px;flex:none;display:grid;place-items:center;border:0;background:none;
+  color:#c9c9c9;cursor:default;padding:0;
+}
+.bl-appicon:hover,.bl-appicon.open{color:#fff}
+.bl-menubar{display:flex;align-items:stretch;flex:none}
+.bl-menubar>button{
+  border:0;background:none;color:var(--header-text);font:inherit;padding:0 8px;
+  cursor:default;border-radius:var(--w-round);margin:3px 0;
+}
+.bl-menubar>button:hover,.bl-menubar>button.open{background:#ffffff14;color:#fff}
+.bl-workspaces{display:flex;align-items:stretch;flex:1 1 auto;min-width:0;overflow:hidden;padding-left:4px}
+.bl-ws{
+  display:flex;align-items:center;padding:0 10px;color:var(--tab-text);white-space:nowrap;
+  cursor:default;background:var(--tab-inner);border-radius:5px 5px 0 0;margin-top:4px;
+}
+.bl-ws:hover{color:#c8c8c8}
+.bl-ws.active{background:var(--tab-active);color:var(--tab-text-active)}
+.bl-topbar-right{display:flex;align-items:center;gap:4px;flex:none;padding-left:6px}
+.bl-id{
+  height:20px;display:inline-flex;align-items:center;gap:5px;padding:0 6px;border:1px solid var(--w-outline);
+  border-radius:var(--w-round);background:var(--w-inner);color:var(--w-text);font:inherit;max-width:170px;
+}
+.bl-id:hover{background:#606060}
+.bl-id .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-id .dot{width:11px;height:11px;border-radius:50%;background:#e6e6e6;opacity:.85;flex:none}
+
+/* ============================== статус-бар ============================== */
+.bl-statusbar{
+  height:24px;flex:none;display:flex;align-items:center;gap:16px;padding:0 8px;
+  background:var(--header);color:var(--status-text);font-size:11px;overflow:hidden;
+}
+.bl-statusbar .hint{white-space:nowrap}
+.bl-statusbar .spring{flex:1 1 auto}
+.bl-statusbar .stat{white-space:nowrap}
+.bl-statusbar .stat.right{color:#9a9a9a}
+
+/* ========================== области и шапки ============================= */
+.bl-main{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;background:var(--editor-border)}
+.bl-upper{flex:1 1 auto;display:flex;min-height:0}
+.bl-rightcol{width:330px;flex:none;display:flex;flex-direction:column;min-height:0}
+.bl-area{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--space-back)}
+.bl-view3d{flex:1 1 auto;background:var(--view3d-bottom)}
+.bl-outliner{flex:1 1 auto;min-height:50px}
+.bl-properties{flex:1 1 auto;min-height:80px}
+.bl-timeline{height:130px;flex:none}
+.bl-header{
+  height:var(--h-header);flex:none;display:flex;align-items:center;gap:1px;padding:0 4px;
+  background:var(--header);color:var(--header-text);position:relative;z-index:20;
+}
+.bl-header .sp{flex:1 1 auto}
+.bl-hdr-menu,.bl-hdr-tgl{
+  height:20px;display:inline-flex;align-items:center;gap:4px;padding:0 6px;border:0;
+  border-radius:var(--w-round);background:none;color:var(--header-text);font:inherit;
+  cursor:default;white-space:nowrap;
+}
+.bl-hdr-menu:hover,.bl-hdr-tgl:hover{background:#ffffff14;color:#fff}
+.bl-hdr-menu.open,.bl-hdr-tgl.open{background:#ffffff1f;color:#fff}
+.bl-hdr-tgl.on{background:var(--w-sel);color:#fff}
+.bl-hdr-tgl.icon-only{padding:0;width:22px;justify-content:center}
+.bl-hdr-sep{width:1px;height:14px;background:#ffffff1a;flex:none;margin:0 3px}
+.bl-editortype{
+  height:22px;width:24px;display:grid;place-items:center;border:0;border-radius:var(--w-round);
+  background:none;color:#d0d0d0;cursor:default;padding:0;
+}
+.bl-editortype:hover{background:#ffffff14;color:#fff}
+.bl-editortype.open{background:#ffffff1f;color:#fff}
+
+/* ========================= Tabs & Panels =============================== */
+.bl-panel{
+  background:var(--panel-back);border-radius:6px;margin:0 2px 2px;overflow:hidden;
+  box-shadow:inset 0 0 0 1px var(--panel-line);
+}
+.bl-panel.collapsed{background:transparent;box-shadow:none}
+.bl-panel-head{
+  display:flex;align-items:center;gap:0;min-height:var(--h-panel);padding:0 4px;
+  color:var(--panel-title);font-weight:500;cursor:default;
+}
+.bl-panel:not(.collapsed)>.bl-panel-head{border-bottom:1px solid var(--panel-line)}
+.bl-panel-head:hover{background:#ffffff0d}
+.bl-panel-arrow{
+  width:14px;height:14px;display:grid;place-items:center;flex:none;color:#c4c4c4;
+  transition:transform .08s linear;
+}
+.bl-panel.collapsed>.bl-panel-head .bl-panel-arrow{transform:rotate(-90deg)}
+.bl-panel-head .title{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-panel-head .tools{display:flex;align-items:center;gap:2px}
+.bl-panel-body{padding:4px 6px 6px;display:flex;flex-direction:column;gap:1px}
+.bl-panel.collapsed>.bl-panel-body{display:none}
+.bl-subpanel{background:var(--panel-sub);border-radius:5px}
+.bl-subpanel>.bl-panel-head{color:#dcdcdc}
+.bl-scroll{overflow:auto;flex:1 1 auto;min-height:0;padding:2px 0 6px}
+.bl-scroll::-webkit-scrollbar{width:11px;height:11px}
+.bl-scroll::-webkit-scrollbar-track{background:transparent}
+.bl-scroll::-webkit-scrollbar-thumb{
+  background:var(--w-inner);border-radius:6px;border:3px solid transparent;background-clip:content-box;
+}
+.bl-scroll::-webkit-scrollbar-thumb:hover{background:#7a7a7a;background-clip:content-box}
+
+/* ============================== outliner ================================ */
+.bl-outliner-body{flex:1 1 auto;overflow:auto;min-height:0;padding:2px 2px 6px}
+.bl-li .tri{width:12px;height:12px;flex:none;display:grid;place-items:center;color:#c4c4c4}
+.bl-li .tri.collapsed{transform:rotate(-90deg)}
+.bl-li .icon{width:16px;flex:none;display:grid;place-items:center}
+.bl-li .toggles{display:flex;align-items:center;gap:1px;opacity:.35}
+.bl-li:hover .toggles{opacity:1}
+.bl-li .tgl{width:18px;height:18px;display:grid;place-items:center;border-radius:3px;color:#e0e0e0}
+.bl-li .tgl:hover{background:#ffffff1f}
+
+/* ========================= properties (nav bar) ========================= */
+.bl-props-body{flex:1 1 auto;display:flex;min-height:0}
+.bl-navbar{
+  width:var(--navbar-w);flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding-top:3px;background:var(--space-back);overflow:hidden auto;
+}
+.bl-navbar::-webkit-scrollbar{width:0}
+.bl-navbtn{
+  width:24px;height:24px;flex:none;display:grid;place-items:center;border:0;border-radius:4px;
+  background:none;color:#c8c8c8;cursor:default;padding:0;
+}
+.bl-navbtn:hover{background:#ffffff14;color:#fff}
+.bl-navbtn.active{background:var(--panel-active);color:#fff}
+.bl-props-pages{flex:1 1 auto;overflow:auto;min-height:0;padding:4px 0 8px}
+.bl-props-pages::-webkit-scrollbar{width:11px}
+.bl-props-pages::-webkit-scrollbar-thumb{
+  background:var(--w-inner);border-radius:6px;border:3px solid transparent;background-clip:content-box;
+}
+.bl-page{display:none;flex-direction:column}
+.bl-page.active{display:flex}
+.bl-idrow{display:flex;align-items:center;gap:5px;margin:0 2px 4px;min-width:0}
+.bl-idrow .ic{color:var(--icon-data)}
+.bl-idrow .name{
+  height:var(--h-widget);display:flex;align-items:center;padding:0 5px;border-radius:var(--w-round);
+  background:var(--w-item);border:1px solid var(--w-outline);flex:1 1 auto;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.bl-idrow .tgl{width:var(--h-widget);height:var(--h-widget);display:grid;place-items:center;
+  border-radius:var(--w-round);background:var(--w-inner);border:1px solid var(--w-outline);color:#dcdcdc}
+.bl-idrow .tgl:hover{background:#606060}
+
+/* ============================== timeline ================================ */
+.bl-timeline-body{flex:1 1 auto;position:relative;min-height:0;overflow:hidden;background:var(--space-back)}
+.bl-tl-ruler{height:22px;position:relative;background:#2a2a2a;border-bottom:1px solid #1c1c1c;overflow:hidden}
+.bl-tl-body{position:absolute;inset:22px 0 0;overflow:hidden}
+.bl-tl-tick{position:absolute;top:0;bottom:0;width:1px;background:rgba(84,84,84,.55)}
+.bl-tl-tick.major{background:var(--grid-major)}
+.bl-tl-num{position:absolute;top:4px;font-size:10px;color:#b8b8b8;transform:translateX(4px)}
+.bl-tl-out{position:absolute;inset:0;background:rgba(0,0,0,.35);pointer-events:none}
+.bl-tl-playhead{position:absolute;top:0;bottom:0;width:1px;background:var(--panel-active);z-index:3}
+.bl-tl-playhead::before{
+  content:"";position:absolute;top:0;left:-5px;width:11px;height:9px;background:var(--panel-active);
+  clip-path:polygon(0 0,100% 0,50% 100%);
+}
+.bl-tl-track{position:absolute;left:4px;right:4px;top:8px;height:30px;background:var(--space-back-alt);
+  border-radius:3px;box-shadow:inset 0 0 0 1px #00000040}
+.bl-tl-note{position:absolute;left:26px;top:26px;color:#8a8a8a}
+
+/* ========================= 3D viewport: тело ============================ */
+.bl-v3d-body{flex:1 1 auto;display:flex;min-height:0}
+.bl-v3d-header .mode .lbl{min-width:0}
+
+/* ------------------------------- тулбар (T) ----------------------------- */
+.bl-toolbar{
+  width:38px;flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:3px 0;background:var(--space-back);overflow:hidden auto;
+}
+.bl-toolbar::-webkit-scrollbar{width:0}
+.bl-tool{
+  width:30px;height:30px;flex:none;display:grid;place-items:center;border:0;border-radius:5px;
+  background:var(--w-tool-item);color:var(--w-col);cursor:default;padding:0;position:relative;
+}
+.bl-tool:hover{background:#454545;color:#fff}
+.bl-tool.active{background:var(--w-sel);color:#fff}
+.bl-tool .grp{position:absolute;right:2px;bottom:2px;width:0;height:0;
+  border-left:4px solid transparent;border-bottom:4px solid rgba(255,255,255,.6)}
+.bl-toolbar .gap{height:6px;flex:none}
+.bl-toolbar .hsp{flex:1 1 auto}
+.bl-toolopts{border-top:1px solid var(--panel-line);width:100%;padding:2px 3px}
+.bl-toolopts .bl-enum{width:100%}
+
+/* ------------------------------- канвас ---------------------------------- */
+.bl-canvas{
+  position:relative;flex:1 1 auto;min-width:0;overflow:hidden;
+  background:linear-gradient(180deg,var(--view3d-top) 0%,#333 45%,var(--view3d-bottom) 100%);
+}
+.bl-canvas .grid-layer{position:absolute;inset:0;overflow:hidden}
+.bl-canvas .hz{
+  position:absolute;left:-30%;right:-30%;height:1px;background:var(--grid);
+}
+.bl-canvas .hz.major{background:var(--grid-major)}
+.bl-canvas .vt{position:absolute;top:34%;bottom:0;width:1px;background:var(--grid)}
+.bl-canvas .vt.major{background:var(--grid-major)}
+.bl-canvas .axis{position:absolute;height:2px;transform-origin:0 50%;border-radius:2px}
+.bl-canvas .axis.x{background:var(--axis-x)}
+.bl-canvas .axis.y{background:var(--axis-y)}
+.bl-canvas .axis-title{position:absolute;font-size:10px;font-weight:600}
+
+/* объект "Cube" (по умолчанию выделен → оранжевый контур) */
+.bl-obj{position:absolute;transform-origin:0 0}
+.bl-cube{width:120px;height:120px;position:relative}
+.bl-cube .face{position:absolute;inset:0;background:#c8c8c8}
+.bl-cube .top{transform:rotate(45deg) skewX(-15deg) scaleY(.58);background:#dcdcdc}
+.bl-cube .left{transform:rotate(-45deg) skewX(15deg) scaleY(.58);background:#9a9a9a;left:-42px}
+.bl-cube .right{transform:rotate(45deg) skewX(15deg) scaleY(.58);background:#6f6f6f;left:42px}
+.bl-cube.sel .face{box-shadow:0 0 0 1.5px var(--sel-outline)}
+.bl-light{position:absolute;width:0;height:0}
+.bl-light .dot{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;
+  background:#e8e8e8;box-shadow:0 0 0 1px #000}
+.bl-light .ring{position:absolute;left:-13px;top:-13px;width:26px;height:26px;border-radius:50%;
+  border:1px dashed rgba(255,255,255,.75)}
+.bl-cam{position:absolute;color:#dcdcdc}
+.bl-cam .body{position:absolute;left:0;top:0;width:26px;height:16px;border:1.5px solid currentColor;
+  border-radius:2px;background:rgba(0,0,0,.35)}
+.bl-cam .lens{position:absolute;left:26px;top:3px;width:10px;height:10px;border:1.5px solid currentColor;
+  transform:skewY(-12deg);border-left:0}
+.bl-cam .leg{position:absolute;width:1.5px;height:12px;background:currentColor;top:16px}
+.bl-cursor3d{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+  background:conic-gradient(#d21f1f 0 25%,#ffffff 0 50%,#d21f1f 0 75%,#ffffff 0);
+  -webkit-mask:radial-gradient(circle,transparent 0 8px,#000 8px 9.5px,transparent 9.5px);
+  mask:radial-gradient(circle,transparent 0 8px,#000 8px 9.5px,transparent 9.5px);
+}
+.bl-canvas-note{position:absolute;left:10px;bottom:8px;color:#9c9c9c;font-size:10px}
+
+/* навигационный гизмо (правый верхний угол вьюпорта) */
+.bl-navgizmo{position:absolute;right:14px;top:12px;width:96px;height:96px}
+.bl-navgizmo .nav{
+  position:absolute;width:20px;height:20px;display:grid;place-items:center;border-radius:50%;
+  background:#ffffff12;color:#dcdcdc;
+}
+.bl-navgizmo .nav:hover{background:#ffffff2b;color:#fff}
+.bl-navgizmo .n-zoom{left:2px;top:34px}
+.bl-navgizmo .n-pan{left:34px;top:68px}
+.bl-navgizmo .n-cam{left:68px;top:34px}
+.bl-navgizmo .n-proj{left:34px;top:2px}
+.bl-navgizmo .axes{position:absolute;left:22px;top:22px;width:52px;height:52px}
+.bl-navgizmo .ax{position:absolute;left:50%;top:50%;height:2px;transform-origin:0 50%;border-radius:2px}
+.bl-navgizmo .ball{position:absolute;width:9px;height:9px;border-radius:50%;border:1px solid #00000055}
+
+/* ========================= 3D viewport: sidebar (N) ==================== */
+.bl-v3d-sidebar{
+  width:290px;flex:none;display:flex;flex-direction:column;min-height:0;background:var(--space-back);
+}
+.bl-sidebar-tabs{
+  height:var(--h-header);flex:none;display:flex;align-items:stretch;gap:0;background:var(--header);
+  padding:0 2px;overflow:hidden;
+}
+.bl-stab{
+  display:flex;align-items:center;padding:0 8px;color:var(--tab-text);cursor:default;
+  background:none;border:0;font:inherit;white-space:nowrap;
+}
+.bl-stab:hover{color:#c8c8c8}
+.bl-stab.active{color:var(--tab-text-active)}
+.bl-stab.add{width:24px;justify-content:center;padding:0;color:#b0b0b0}
+.bl-sidebar-body{flex:1 1 auto;overflow:auto;min-height:0;padding:3px 0 6px}
+.bl-sidebar-body::-webkit-scrollbar{width:11px}
+.bl-sidebar-body::-webkit-scrollbar-thumb{
+  background:var(--w-inner);border-radius:6px;border:3px solid transparent;background-clip:content-box;
+}
+.bl-stabpage{display:none;flex-direction:column}
+.bl-stabpage.active{display:flex}
+.bl-fillcol{display:flex;flex-direction:column;gap:1px;flex:1 1 auto}
+.bl-widgeticon{width:var(--h-widget);height:var(--h-widget);flex:none;display:grid;place-items:center;
+  border-radius:var(--w-round);background:var(--w-inner);border:1px solid var(--w-outline);color:#dcdcdc}
+.bl-widgeticon:hover{background:#606060}
+.bl-widgeticon.on{background:var(--w-sel);border-color:var(--w-sel);color:#fff}
+
+/* кнопки выбора режима shading (4 «сферы») */
+.bl-shading{display:flex;align-items:center;gap:2px;flex:none}
+.bl-shade{
+  width:24px;height:22px;display:grid;place-items:center;border:0;border-radius:4px;
+  background:none;cursor:default;padding:0;
+}
+.bl-shade:hover{background:#ffffff14}
+.bl-shade.on{background:var(--w-sel)}
+.bl-sphere{width:16px;height:16px;border-radius:50%;border:1px solid #00000066}
+.sp-wire{background:repeating-linear-gradient(45deg,#9a9a9a 0 2px,#3b3b3b 2px 4px)}
+.sp-solid{background:radial-gradient(circle at 34% 30%,#e8e8e8,#9a9a9a 55%,#5c5c5c)}
+.sp-mat{background:radial-gradient(circle at 34% 30%,#ffd7a8,#c98b52 55%,#5a3a24)}
+.sp-rend{background:radial-gradient(circle at 34% 30%,#ffe9c9,#e8a05a 50%,#3a2412)}
+.bl-shade.on .bl-sphere{box-shadow:0 0 0 1px #ffffff66}
+
+/* прочее: контекстные менюшек-«поповеры» и т.п. */
+.bl-popover{
+  position:fixed;z-index:200;min-width:150px;padding:5px;border-radius:5px;
+  background:var(--menu-back);box-shadow:0 0 0 1px var(--menu-back-outline),0 6px 16px #00000080;
+  display:flex;flex-direction:column;gap:2px;
+}
+.bl-popover .bl-note{color:#b4b4b4}
+
+/* ============================== меню ==================================== */
+.bl-menu{
+  position:fixed;z-index:300;min-width:150px;padding:4px;border-radius:5px;
+  background:var(--menu-back);
+  box-shadow:0 0 0 1px var(--menu-back-outline),0 6px 18px #00000099;
+  display:flex;flex-direction:column;
+}
+.bl-menu-item{
+  display:flex;align-items:center;gap:8px;height:20px;padding:0 6px;border-radius:4px;
+  color:var(--menu-text);white-space:nowrap;position:relative;
+}
+.bl-menu-item .chk{width:14px;flex:none;display:grid;place-items:center;color:#fff}
+.bl-menu-item .mi-icon{width:16px;flex:none;display:grid;place-items:center;color:#d9d9d9}
+.bl-menu-item .mi-label{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis}
+.bl-menu-item .mi-key{color:var(--menu-text-dim);padding-left:14px;font-size:10px}
+.bl-menu-item .mi-sub{width:12px;display:grid;place-items:center;color:#c9c9c9}
+.bl-menu-item:hover,.bl-menu-item.open{background:var(--menu-sel);color:#fff}
+.bl-menu-item:hover .mi-key,.bl-menu-item.open .mi-key{color:#e9e9e9}
+.bl-menu-item.disabled{color:#6c6c6c}
+.bl-menu-item.disabled:hover{background:transparent;color:#6c6c6c}
+.bl-menu-sep{height:1px;background:var(--menu-sep);margin:4px 2px}
+
+/* ============================== тултип ================================== */
+.bl-tip{
+  position:fixed;z-index:400;max-width:340px;padding:5px 8px;border-radius:4px;
+  background:var(--tip-back);color:var(--tip-text);
+  box-shadow:0 0 0 1px var(--tip-outline),0 4px 12px #00000080;
+  display:none;flex-direction:column;gap:2px;pointer-events:none;
+}
+.bl-tip.show{display:flex}
+.bl-tip .tt-title{color:#e6e6e6}
+.bl-tip .tt-key{color:#a8a8a8}
+.bl-tip .tt-desc{color:#c4c4c4;font-size:10px;line-height:1.35}
+
+
+/* цвета осей X/Y/Z в числовых полях */
+.ax-x{color:var(--axis-x)}
+.ax-y{color:var(--axis-y)}
+.ax-z{color:var(--axis-z)}
+.bl-num .ax-x,.bl-num .ax-y,.bl-num .ax-z{font-weight:600}
+.bl-panel-head .tools .bl-btn{height:16px}
+.bl-canvas-note b{color:#e0e0e0}
+/* панель свойств: отступы дерева, ключи в статусбаре */
+.bl-li[data-depth="1"]{padding-left:20px}
+.bl-li[data-depth="2"]{padding-left:36px}
+.bl-statusbar .hint b{color:#c8c8c8;font-weight:600}
+.bl-props-path{display:flex;align-items:center;gap:5px;min-width:0;color:#cfcfcf}
+.bl-props-path .sep{color:#8a8a8a}
+.bl-props-path .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-hdr-field{max-width:190px;flex:0 1 auto}
+.bl-tl-playhead{z-index:4}
+
+/* --------------------- состояния, управляемые из JS --------------------- */
+.bl-li .tgl.off{opacity:.32}
+.bl-li .tri.closed svg{transform:rotate(-90deg)}
+.bl-li .tri{display:grid;place-items:center;width:14px;height:14px;flex:none;color:#c4c4c4}
+.bl-canvas[data-shading="wireframe"] .bl-cube .face{background:#3b3b3b;box-shadow:0 0 0 1px #cfcfcf}
+.bl-canvas[data-shading="material"] .bl-cube .face{background:#c98b52}
+.bl-canvas[data-shading="material"] .bl-cube .top{background:#e0a874}
+.bl-canvas[data-shading="material"] .bl-cube .left{background:#8a5a33}
+.bl-canvas[data-shading="material"] .bl-cube .right{background:#5a3a24}
+.bl-canvas[data-shading="rendered"] .bl-cube .face{background:#e8a05a}
+.bl-canvas[data-shading="rendered"] .bl-cube .top{background:#ffd7a8}
+.bl-canvas[data-shading="rendered"] .bl-cube .left{background:#a8663a}
+.bl-canvas[data-shading="rendered"] .bl-cube .right{background:#5c3520}
+</style>
+</head>
+<body>
+<svg class="bl-icons" aria-hidden="true" focusable="false"><symbol id="i-logo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.4" cy="9.8" r="4.4"/><path d="M9.7 6.6 12.9 3.4"/><circle cx="13.1" cy="3.3" r="1.5" fill="currentColor" stroke="none"/><path d="M6.4 5.4c2.4 0 3.2 1.2 3.8 1.2"/></symbol>
+<symbol id="i-pointer" viewBox="0 0 16 16"><path d="M4.2 1.8 4.2 13 6.9 10.4 8.7 14.2 10.6 13.3 8.7 9.5 12.4 9.5Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-cursor3d" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.4" stroke-dasharray="2.4 1.6"/><path d="M8 2.6v10.8M2.6 8h10.8" stroke-width="1"/></symbol>
+<symbol id="i-selectbox" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2.2 1.5"><rect x="2.4" y="3.4" width="11.2" height="9.2" rx="1"/></symbol>
+<symbol id="i-move" viewBox="0 0 16 16"><path d="M8 1.4 10.1 3.8H9v3.3h3.3V6L14.6 8l-2.3 2.1V9H9v3.3h1.1L8 14.6 5.9 12.3H7V9H3.7v1.1L1.4 8l2.3-2.2V7H7V3.7H5.9Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-rotate" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.2 8A5.2 5.2 0 1 0 8 13.2"/><path d="M10.6 1.4 13.6 4.1 10.6 6.8Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-scale" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.4 12.6 11.4 4.6"/><rect x="1.6" y="11.4" width="3.4" height="3.4" fill="currentColor" stroke="none"/><rect x="10.4" y="2.2" width="4" height="4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.2 5.4h9.4M11.6 2.2h3.2v3.2M13.8 10.6H4.4M4.4 13.8H1.2v-3.2"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-annotate" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.4 13.6 3.6 10 10.6 3 13 5.4 6 12.4Z"/><path d="M9.8 3.8 12.2 6.2"/></symbol>
+<symbol id="i-measure" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 12.6 12.6 2"/><path d="M4 10.6 5.8 12.4M6.4 8.2 8.2 10M8.8 5.8 10.6 7.6"/><path d="M1.4 11.6 4.4 14.6M11.6 1.4 14.6 4.4"/></symbol>
+<symbol id="i-addcube" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1.8 14 5v6l-6 3.2L2 11V5Z"/><path d="M2 5l6 3.2L14 5M8 8.2v6"/></symbol>
+<symbol id="i-gizmo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8.4" r="2.6"/><path d="M8 5.8V1.6M4.6 6.4 1.8 3.6M11.4 6.4l2.8-2.8"/><circle cx="8" cy="1.4" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-overlays" viewBox="0 0 16 16"><circle cx="6.1" cy="8" r="3.7" fill="currentColor" stroke="none" opacity=".95"/><circle cx="9.9" cy="8" r="3.7" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+<symbol id="i-xray" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2.2 1.4"><rect x="2.8" y="2.8" width="10.4" height="10.4" rx="1"/><path d="M2.8 8h10.4M8 2.8v10.4" stroke-dasharray="none"/></symbol>
+<symbol id="i-magnet" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.6 12.6V7.2a4.4 4.4 0 0 1 8.8 0v5.4"/><path d="M3.6 9.6h3.2M12.4 9.6H9.2"/></symbol>
+<symbol id="i-proportional" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.4" stroke-dasharray="2.2 1.6"/><circle cx="8" cy="8" r="1.7" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pivot" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="4.4"/><path d="M8 1.4v2.8M8 11.8v2.8M1.4 8h2.8M11.8 8h2.8"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-chev-down" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 6.4 8 10.4 12 6.4"/></symbol>
+<symbol id="i-chev-right" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6.4 4 10.4 8 6.4 12"/></symbol>
+<symbol id="i-tri-down" viewBox="0 0 16 16"><path d="M3.6 5.6h8.8L8 11.2Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3.2 8.4 6.4 11.6 12.8 4.8"/></symbol>
+<symbol id="i-search" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="7" r="4.3"/><path d="M10.4 10.4 14 14"/></symbol>
+<symbol id="i-undo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5.6 3.4 2.4 6.6 5.6 9.8"/><path d="M2.4 6.6h6a4 4 0 0 1 0 8"/></symbol>
+<symbol id="i-redo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10.4 3.4 13.6 6.6 10.4 9.8"/><path d="M13.6 6.6h-6a4 4 0 0 0 0 8"/></symbol>
+<symbol id="i-filter" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.4 3.4h11.2L9.6 8v4.6L6.4 11V8Z"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10.2 2.4a3.7 3.7 0 0 0-4.5 4.7L2 10.8 3.2 12l3.7-3.7a3.7 3.7 0 0 0 4.7-4.5L9.4 6.1 7.9 4.6Z"/></symbol>
+<symbol id="i-camera" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.8 5.2h8.4v7.4H1.8z"/><path d="M10.2 8.2 14.2 5.6v6.6l-4-2.6Z"/></symbol>
+<symbol id="i-printer" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4.4 6V2.2h7.2V6"/><rect x="1.9" y="6" width="12.2" height="5.6" rx="1"/><path d="M4.4 9.6h7.2v4.2H4.4z"/></symbol>
+<symbol id="i-layers" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1.8 14.2 5 8 8.2 1.8 5Z"/><path d="M11.8 6.6 14.2 8 8 11.2 1.8 8l2.4-1.4"/></symbol>
+<symbol id="i-scene" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="9" cy="9.4" r="4.4"/><path d="M2 13.6 5.6 5.6 8 10.6"/></symbol>
+<symbol id="i-globe" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/><path d="M8 2c2.6 3.4 2.6 8.6 0 12-2.6-3.4-2.6-8.6 0-12Z"/></symbol>
+<symbol id="i-collection" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M2 6.4h12"/></symbol>
+<symbol id="i-object" viewBox="0 0 16 16"><rect x="3.2" y="3.2" width="9.6" height="9.6" rx="1.2" fill="currentColor" stroke="none" opacity=".92"/></symbol>
+<symbol id="i-particles" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="4.4" cy="5" r="1.7" fill="currentColor" stroke="none"/><circle cx="10" cy="3.2" r="1.2" fill="currentColor" stroke="none"/><circle cx="12.2" cy="9.2" r="1.4" fill="currentColor" stroke="none"/><circle cx="6" cy="11.8" r="1.5" fill="currentColor" stroke="none"/><path d="M4.4 5 10 3.2M10 3.2 12.2 9.2M12.2 9.2 6 11.8M6 11.8 4.4 5" opacity=".8"/></symbol>
+<symbol id="i-physics" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><ellipse cx="8" cy="8" rx="6.2" ry="2.5"/><ellipse cx="8" cy="8" rx="6.2" ry="2.5" transform="rotate(60 8 8)"/><ellipse cx="8" cy="8" rx="6.2" ry="2.5" transform="rotate(120 8 8)"/><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-constraint" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="5.4" cy="8" r="3.3"/><circle cx="10.6" cy="8" r="3.3"/></symbol>
+<symbol id="i-mesh" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2 13.8 5.2v5.6L8 14 2.2 10.8V5.2Z"/><path d="M8 2v12M2.2 5.2 8 8.2l5.8-3"/></symbol>
+<symbol id="i-material" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.6"/><path d="M8 2.4a5.6 5.6 0 0 1 0 11.2Z" fill="currentColor" stroke="none" opacity=".8"/></symbol>
+<symbol id="i-texture" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="12" height="12" rx="1"/><rect x="2.6" y="2.6" width="5.4" height="5.4" fill="currentColor" stroke="none"/><rect x="8" y="8" width="5.4" height="5.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-shading" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.6"/><path d="M3.6 5.4c2.6 2.6 6 3.4 8.8 2.6"/></symbol>
+<symbol id="i-eye" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.6 8S4.2 4.4 8 4.4 14.4 8 14.4 8s-2.6 3.6-6.4 3.6S1.6 8 1.6 8Z"/><circle cx="8" cy="8" r="1.7" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-eye-off" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 8c1.6-2.1 3.2-3.1 5-3.1 1.8 0 3.4 1 5 3.1-1 1.3-2.1 2.2-3.4 2.7"/><path d="M3.4 12.6 12.6 3.4"/></symbol>
+<symbol id="i-monitor" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.8" y="3" width="12.4" height="8" rx="1"/><path d="M6 13.4h4M8 11v2.4"/></symbol>
+<symbol id="i-holdout" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.4" fill="currentColor" stroke="none" opacity=".45"/><circle cx="8" cy="8" r="5.4"/></symbol>
+<symbol id="i-light" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="2.6" fill="currentColor" stroke="none"/><path d="M8 1.4v2.4M8 12.2v2.4M1.4 8h2.4M12.2 8h2.4M3.6 3.6 5.2 5.2M10.8 10.8l1.6 1.6M12.4 3.6 10.8 5.2M5.2 10.8 3.6 12.4"/></symbol>
+<symbol id="i-camobj" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.6" y="4.8" width="8.2" height="6.4" rx="1"/><path d="M9.8 8 14.4 5.2v5.6Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-proj" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 11.6C2 6 5.6 2.4 13.6 2.4"/><path d="M2.4 2.4v9.2h9.2"/></symbol>
+<symbol id="i-hand" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4.8 12.4V6.4a1.1 1.1 0 0 1 2.2 0V4.2a1.1 1.1 0 0 1 2.2 0v2a1.1 1.1 0 0 1 2.2 0v2.4a1.1 1.1 0 0 1 2.2 0v3.8c0 1.4-1.7 2.4-4.1 2.4s-4.7-.8-4.7-2.4Z"/></symbol>
+<symbol id="i-grip" viewBox="0 0 16 16"><g fill="currentColor" stroke="none"><circle cx="5.6" cy="5.6" r="1"/><circle cx="8" cy="5.6" r="1"/><circle cx="10.4" cy="5.6" r="1"/><circle cx="5.6" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="10.4" cy="8" r="1"/><circle cx="5.6" cy="10.4" r="1"/><circle cx="8" cy="10.4" r="1"/><circle cx="10.4" cy="10.4" r="1"/></g></symbol>
+<symbol id="i-plus" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3v10M3 8h10"/></symbol>
+<symbol id="i-minus" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.4 8h9.2"/></symbol>
+<symbol id="i-x" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4 12 12M12 4 4 12"/></symbol>
+<symbol id="i-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.4" y="2.4" width="8.6" height="8.6" rx="1"/><path d="M6 5.6h7.6v8H6z"/></symbol>
+<symbol id="i-paste" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.6" y="3.6" width="10.8" height="10" rx="1"/><path d="M6 3.6V2h4v1.6"/></symbol>
+<symbol id="i-skip-start" viewBox="0 0 16 16"><path d="M4.6 3h1.9v10H4.6zM13.8 3 7.2 8l6.6 5Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-skip-end" viewBox="0 0 16 16"><path d="M9.5 3h1.9v10H9.5zM2.2 3 8.8 8l-6.6 5Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-step-back" viewBox="0 0 16 16"><path d="M12.6 3.2 4 8l8.6 4.8Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-step-fwd" viewBox="0 0 16 16"><path d="M3.4 3.2 12 8l-8.6 4.8Z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pause" viewBox="0 0 16 16"><path d="M4.4 3h2.6v10H4.4zM9 3h2.6v10H9z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-play" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4.2 2.4h3.4v11.2H4.2z"/><path d="M8.4 3.6 13.6 8l-5.2 4.4Z"/></symbol>
+<symbol id="i-record" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4.3" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-outliner" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.4h12M6 8h8M6 12.6h8"/><circle cx="3.4" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="3.4" cy="12.6" r="1.2" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-timeline" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.8" y="3.6" width="12.4" height="8.8" rx="1"/><path d="M1.8 8h12.4"/><path d="M5 2.2v11.6" stroke-width="1"/></symbol>
+<symbol id="i-view3d" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2 14 5.2v5.6L8 14 2 10.8V5.2Z"/><path d="M2 5.2 8 8.4l6-3.2"/></symbol>
+<symbol id="i-node" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2.6" width="5" height="4.4" rx=".8"/><rect x="9" y="9" width="5" height="4.4" rx=".8"/><path d="M7 4.8h2.6c1 0 1.4.6 1.4 1.6v2.6"/></symbol>
+<symbol id="i-text" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.6 3.6h10.8M8 3.6v9.2M5.6 12.8h4.8"/></symbol>
+<symbol id="i-file" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3.6 1.8h5.2l3.6 3.6v8.8H3.6Z"/><path d="M8.6 1.8v4h4"/></symbol>
+<symbol id="i-settings" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v2M8 12.4v2M1.6 8h2M12.4 8h2M3.5 3.5 5 5M11 11l1.5 1.5M12.5 3.5 11 5M5 11l-1.5 1.5"/></symbol>
+<symbol id="i-python" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M5.6 2h4.8v3.4H6.4v1.4h4.8V11H6.4"/><path d="M10.4 14H5.6v-3.4h4v-1.4H4.8V5h4"/></symbol>
+<symbol id="i-folder" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.8 4.2h4.4l1.4 1.8h6.6v6.6H1.8Z"/></symbol>
+<symbol id="i-speaker" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.4 6h2.6l3.4-3v10L5 10H2.4Z"/><path d="M10.6 5.6a3.4 3.4 0 0 1 0 4.8"/></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 12.6V3.4M4.4 7 8 3.4 11.6 7"/></symbol>
+<symbol id="i-pin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 2h4l-.6 4 2.4 2v1.4H4.2V8l2.4-2Z"/><path d="M8 9.4v4.4"/></symbol>
+</svg>
+<div class="bl-app" id="app">
+<!-- ============================== TOPBAR ============================== -->
+<header class="bl-topbar" id="topbar">
+  <button class="bl-appicon" data-menu="app" data-tip="Blender Application Menu" data-tip-desc="Настройки, справка, обновления.">
+    <svg class="ic ic-20"><use href="#i-logo"/></svg>
+  </button>
+  <div class="bl-menubar" id="menubar">
+    <button data-menu="file">File</button>
+    <button data-menu="edit">Edit</button>
+    <button data-menu="render">Render</button>
+    <button data-menu="window">Window</button>
+    <button data-menu="help">Help</button>
+  </div>
+  <button class="bl-id" data-menu="template" data-tip="Application Template" data-tip-desc="Текущий шаблон приложения." style="margin:4px 0 4px 6px">
+    <svg class="ic ic-12"><use href="#i-folder"/></svg><span class="lbl">Layout</span>
+  </button>
+  <div class="bl-workspaces" id="workspaces">
+    <div class="bl-ws active" data-tip="Layout" data-tip-desc="Общий вид: 3D-вьюпорт, Outliner, Properties.">Layout</div>
+    <div class="bl-ws" data-tip="Modeling">Modeling</div>
+    <div class="bl-ws" data-tip="Sculpting">Sculpting</div>
+    <div class="bl-ws" data-tip="UV Editing">UV Editing</div>
+    <div class="bl-ws" data-tip="Texture Paint">Texture Paint</div>
+    <div class="bl-ws" data-tip="Shading">Shading</div>
+    <div class="bl-ws" data-tip="Animation">Animation</div>
+    <div class="bl-ws" data-tip="Rendering">Rendering</div>
+    <div class="bl-ws" data-tip="Compositing">Compositing</div>
+    <div class="bl-ws" data-tip="Geometry Nodes">Geometry Nodes</div>
+    <div class="bl-ws" data-tip="Scripting">Scripting</div>
+    <button class="bl-appicon" data-menu="addWorkspace" data-tip="Add Workspace" style="width:24px;flex:none"><svg class="ic ic-14"><use href="#i-plus"/></svg></button>
+  </div>
+  <div class="bl-topbar-right">
+    <button class="bl-id" data-menu="scene" data-tip="Scene" data-tip-desc="Активная сцена файла.">
+      <span class="dot" style="background:#e19658"></span><span class="lbl">Scene</span>
+      <svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+    </button>
+    <button class="bl-id" data-menu="viewlayer" data-tip="View Layer" data-tip-desc="Активный слой вида.">
+      <span class="lbl">ViewLayer</span>
+      <svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="bl-main" id="main">
+<div class="bl-upper" id="upper">
+  <section class="bl-area bl-view3d" id="areaView3D">
+<!-- ------------------------- Заголовок вьюпорта ------------------------ -->
+<div class="bl-header bl-v3d-header" id="v3dHeader">
+  <button class="bl-editortype" data-menu="editorType" data-tip="Editor Type" data-tip-desc="Сменить тип редактора области."><svg class="ic"><use href="#i-view3d"/></svg></button>
+  <button class="bl-hdr-menu" data-menu="mode" data-tip="Mode" data-tip-key="Ctrl+Tab" data-tip-desc="Режим редактирования активного объекта.">
+    <svg class="ic ic-14" style="color:var(--icon-object)"><use href="#i-object"/></svg><span class="lbl">Object Mode</span>
+    <svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+  </button>
+  <span class="bl-hdr-sep"></span>
+  <button class="bl-hdr-menu" data-menu="view3dView">View</button>
+  <button class="bl-hdr-menu" data-menu="view3dSelect">Select</button>
+  <button class="bl-hdr-menu" data-menu="view3dAdd" data-tip="Add" data-tip-key="Shift+A">Add</button>
+  <button class="bl-hdr-menu" data-menu="view3dObject">Object</button>
+  <span class="bl-hdr-sep"></span>
+  <button class="bl-id" data-menu="orientation" data-tip="Transform Orientation" data-tip-key="Comma" data-tip-desc="Ориентация осей гизмо.">
+    <svg class="ic ic-14"><use href="#i-proj"/></svg><span class="lbl">Global</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+  </button>
+  <button class="bl-id" data-menu="pivot" data-tip="Transform Pivot Point" data-tip-key="Period" data-tip-desc="Точка вращения и масштабирования.">
+    <svg class="ic ic-14"><use href="#i-pivot"/></svg><span class="lbl">Median Point</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+  </button>
+  <button class="bl-hdr-tgl icon-only" data-tgl="snap" data-menu="snapping" data-tip="Snapping" data-tip-key="Shift+Tab" data-tip-desc="Привязка к сетке и элементам."><svg class="ic ic-14"><use href="#i-magnet"/></svg></button>
+  <button class="bl-hdr-tgl icon-only" data-tgl="prop" data-menu="proportional" data-tip="Proportional Editing" data-tip-key="O" data-tip-desc="Плавное влияние на соседние элементы."><svg class="ic ic-14"><use href="#i-proportional"/></svg></button>
+  <span class="sp"></span>
+  <button class="bl-hdr-tgl" data-menu="objTypeVis" data-tip="Object Type Visibility" data-tip-desc="Видимость и выбираемость типов объектов."><svg class="ic ic-14"><use href="#i-eye"/></svg><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+  <button class="bl-hdr-tgl" data-menu="gizmos" data-tip="Viewport Gizmos" data-tip-desc="Отображение гизмо во вьюпорте."><svg class="ic ic-14"><use href="#i-gizmo"/></svg><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+  <button class="bl-hdr-tgl" data-menu="overlays" data-tip="Viewport Overlays" data-tip-desc="Сетка, оси, статистика, тексты."><svg class="ic ic-14"><use href="#i-overlays"/></svg><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+  <button class="bl-hdr-tgl icon-only" data-tgl="xray" data-menu="xray" data-tip="Toggle X-Ray" data-tip-key="Alt+Z" data-tip-desc="Полупрозрачный режим сцены."><svg class="ic ic-14"><use href="#i-xray"/></svg></button>
+  <span class="bl-hdr-sep"></span>
+  <div class="bl-shading" id="shadingBtns" data-tip="Viewport Shading" data-tip-desc="Wireframe · Solid · Material Preview · Rendered">
+    <button class="bl-shade" data-shading="wireframe" data-tip="Wireframe" data-tip-key="Shift+Z"><span class="bl-sphere sp-wire"></span></button>
+    <button class="bl-shade on" data-shading="solid" data-tip="Solid"><span class="bl-sphere sp-solid"></span></button>
+    <button class="bl-shade" data-shading="material" data-tip="Material Preview"><span class="bl-sphere sp-mat"></span></button>
+    <button class="bl-shade" data-shading="rendered" data-tip="Rendered"><span class="bl-sphere sp-rend"></span></button>
+  </div>
+  <span class="bl-hdr-sep"></span>
+  <button class="bl-editortype" data-menu="headerOptions" data-tip="Options" data-tip-desc="Дополнительные опции области."><svg class="ic"><use href="#i-settings"/></svg></button>
+</div>
+
+    <div class="bl-v3d-body" id="v3dBody">
+<!-- ---------------------------- Тулбар (T) ---------------------------- -->
+<div class="bl-toolbar" id="areaToolbar">
+  <button class="bl-tool active" data-tip="Select Box" data-tip-key="W" data-tip-desc="Выделение рамкой."><svg class="ic ic-20"><use href="#i-selectbox"/></svg></button>
+  <button class="bl-tool" data-menu="cursorTool" data-tip="Cursor" data-tip-desc="Размещение 3D-курсора."><svg class="ic ic-20"><use href="#i-cursor3d"/></svg></button>
+  <button class="bl-tool" data-menu="moveTool" data-tip="Move" data-tip-key="G" data-tip-desc="Перемещение выделенного."><svg class="ic ic-20"><use href="#i-move"/></svg><span class="grp"></span></button>
+  <button class="bl-tool" data-menu="rotateTool" data-tip="Rotate" data-tip-key="R" data-tip-desc="Вращение выделенного."><svg class="ic ic-20"><use href="#i-rotate"/></svg><span class="grp"></span></button>
+  <button class="bl-tool" data-menu="scaleTool" data-tip="Scale" data-tip-key="S" data-tip-desc="Масштабирование выделенного."><svg class="ic ic-20"><use href="#i-scale"/></svg><span class="grp"></span></button>
+  <button class="bl-tool" data-menu="transformTool" data-tip="Transform" data-tip-desc="Комбинированный гизмо Move/Rotate/Scale."><svg class="ic ic-20"><use href="#i-transform"/></svg></button>
+  <div class="gap"></div>
+  <button class="bl-tool" data-menu="annotateTool" data-tip="Annotate" data-tip-desc="Заметки поверх вьюпорта."><svg class="ic ic-20"><use href="#i-annotate"/></svg><span class="grp"></span></button>
+  <button class="bl-tool" data-menu="measureTool" data-tip="Measure" data-tip-desc="Измерение расстояний."><svg class="ic ic-20"><use href="#i-measure"/></svg><span class="grp"></span></button>
+  <div class="hsp"></div>
+  <button class="bl-tool" data-menu="addCubeTool" data-tip="Add Cube" data-tip-key="Shift+A" data-tip-desc="Добавить Mesh-примитив."><svg class="ic ic-20"><use href="#i-addcube"/></svg></button>
+  <div class="bl-toolopts">
+    <button class="bl-btn icon-only flat" data-tip="Tool Options" data-tip-desc="Настройки активного инструмента."><svg class="ic ic-14"><use href="#i-grip"/></svg></button>
+  </div>
+</div>
+
+      <div class="bl-split" data-axis="x" data-target="areaToolbar" data-min="30" data-max="90" data-invert="1"></div>
+<!-- --------------------------- Канвас вьюпорта -------------------------- -->
+<div class="bl-canvas" id="areaCanvas" data-menu="viewportContext">
+  <div class="grid-layer" id="gridLayer"></div>
+
+  <!-- Лампа "Light" -->
+  <div class="bl-obj bl-light" id="objLight" style="left:32%;top:24%">
+    <span class="ring"></span><span class="dot"></span>
+  </div>
+
+  <!-- Камера "Camera" -->
+  <div class="bl-obj bl-cam" id="objCamera" style="left:76%;top:66%">
+    <span class="body"></span><span class="lens"></span>
+    <span class="leg" style="left:3px"></span><span class="leg" style="left:20px"></span>
+  </div>
+
+  <!-- Выделенный объект "Cube" -->
+  <div class="bl-obj" id="objCube" style="left:calc(50% - 60px);top:calc(52% - 62px)" data-tip="Cube" data-tip-desc="Mesh · 8 вершин · выделен как активный объект.">
+    <div class="bl-cube sel">
+      <div class="face top"></div><div class="face left"></div><div class="face right"></div>
+    </div>
+  </div>
+
+  <div class="bl-cursor3d" id="cursor3d" style="left:calc(50% + 96px);top:calc(52% + 58px)" data-tip="3D Cursor" data-tip-desc="Позиция 3D-курсора (Shift+ПКМ для переноса)."></div>
+
+  <!-- Навигационный гизмо -->
+  <div class="bl-navgizmo" id="navGizmo">
+    <div class="axes">
+      <span class="ax" style="width:26px;background:#2890ff;transform:rotate(-90deg)"></span>
+      <span class="ax" style="width:26px;background:#8bdc00;transform:rotate(30deg)"></span>
+      <span class="ax" style="width:26px;background:#ff3352;transform:rotate(150deg)"></span>
+      <span class="ball" style="left:22px;top:-4px;background:#2890ff"></span>
+      <span class="ball" style="left:44px;top:32px;background:#8bdc00"></span>
+      <span class="ball" style="left:-2px;top:32px;background:#ff3352"></span>
+    </div>
+    <button class="nav n-proj" data-menu="projPersp" data-tip="Perspective / Orthographic"><svg class="ic ic-14"><use href="#i-proj"/></svg></button>
+    <button class="nav n-zoom" data-menu="navZoom" data-tip="Zoom"><svg class="ic ic-14"><use href="#i-search"/></svg></button>
+    <button class="nav n-pan" data-menu="navPan" data-tip="Pan"><svg class="ic ic-14"><use href="#i-hand"/></svg></button>
+    <button class="nav n-cam" data-menu="navCam" data-tip="Camera View" data-tip-key="Numpad 0"><svg class="ic ic-14"><use href="#i-camobj"/></svg></button>
+  </div>
+
+  <div class="bl-canvas-note">Press <b>T</b> for the Toolbar · <b>N</b> for the Sidebar · <b>Z</b> for shading pie</div>
+</div>
+
+      <div class="bl-split" data-axis="x" data-target="v3dSidebar" data-min="200" data-max="600" data-invert="1"></div>
+<!-- ---------------------------- Сайдбар (N) ---------------------------- -->
+<aside class="bl-v3d-sidebar" id="v3dSidebar">
+  <div class="bl-sidebar-tabs" id="sidebarTabs">
+    <button class="bl-stab active" data-tab="item">Item</button>
+    <button class="bl-stab" data-tab="tool">Tool</button>
+    <button class="bl-stab" data-tab="view">View</button>
+    <button class="bl-stab add" data-menu="addSidebarTab" data-tip="Add Tab" data-tip-desc="Добавить вкладку в сайдбар."><svg class="ic ic-12"><use href="#i-plus"/></svg></button>
+  </div>
+  <div class="bl-sidebar-body">
+    <!-- Item -->
+    <div class="bl-stabpage active" data-page="item">
+      <div class="bl-panel">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+          <span class="title">Transform</span>
+          <span class="tools"><button class="bl-btn icon-only flat" data-tip="Reset Transform" data-tip-key="Alt+G / Alt+R / Alt+S"><svg class="ic ic-12"><use href="#i-undo"/></svg></button></span>
+        </div>
+        <div class="bl-panel-body">
+          <div class="bl-row"><span class="label">Location</span>
+            <span class="bl-num"><span class="ax-x">X</span>&nbsp;0 m</span>
+            <span class="bl-num"><span class="ax-y">Y</span>&nbsp;0 m</span>
+            <span class="bl-num"><span class="ax-z">Z</span>&nbsp;0 m</span>
+          </div>
+          <div class="bl-row"><span class="label">Rotation</span>
+            <span class="bl-num"><span class="ax-x">X</span>&nbsp;0&deg;</span>
+            <span class="bl-num"><span class="ax-y">Y</span>&nbsp;0&deg;</span>
+            <span class="bl-num"><span class="ax-z">Z</span>&nbsp;0&deg;</span>
+          </div>
+          <div class="bl-row"><span class="label">Scale</span>
+            <span class="bl-num"><span class="ax-x">X</span>&nbsp;1.000</span>
+            <span class="bl-num"><span class="ax-y">Y</span>&nbsp;1.000</span>
+            <span class="bl-num"><span class="ax-z">Z</span>&nbsp;1.000</span>
+          </div>
+          <div class="bl-row"><span class="label">Dimensions</span>
+            <span class="bl-num">X&nbsp;2 m</span><span class="bl-num">Y&nbsp;2 m</span><span class="bl-num">Z&nbsp;2 m</span>
+          </div>
+        </div>
+      </div>
+      <div class="bl-panel collapsed">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Delta Transform</span></div>
+        <div class="bl-panel-body">
+          <div class="bl-row"><span class="label">Location</span><span class="bl-num">0 m</span><span class="bl-num">0 m</span><span class="bl-num">0 m</span></div>
+        </div>
+      </div>
+      <div class="bl-panel">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Collections</span></div>
+        <div class="bl-panel-body">
+          <div class="bl-field"><svg class="ic ic-12" style="color:var(--icon-collection)"><use href="#i-collection"/></svg><span class="lbl">Collection</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Tool -->
+    <div class="bl-stabpage" data-page="tool">
+      <div class="bl-panel">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Select Box</span></div>
+        <div class="bl-panel-body">
+          <div class="bl-row"><span class="label">Mode</span>
+            <span class="bl-enum"><button class="bl-btn on">Set</button><button class="bl-btn">Add</button><button class="bl-btn">Sub</button></span>
+          </div>
+          <div class="bl-row"><span class="label">Select All</span><button class="bl-btn">Tweak</button></div>
+        </div>
+      </div>
+      <div class="bl-panel">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Transform</span></div>
+        <div class="bl-panel-body">
+          <div class="bl-row"><span class="label">Orientation</span><button class="bl-btn"><span class="lbl">Global</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button></div>
+          <div class="bl-row"><span class="label">Pivot</span><button class="bl-btn"><span class="lbl">Median Point</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button></div>
+        </div>
+      </div>
+    </div>
+    <!-- View -->
+    <div class="bl-stabpage" data-page="view">
+      <div class="bl-panel">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">View</span></div>
+        <div class="bl-panel-body">
+          <div class="bl-row"><span class="label">Viewpoint</span><button class="bl-btn"><span class="lbl">User Perspective</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button></div>
+          <div class="bl-row"><span class="label">Local Camera</span><button class="bl-btn"><span class="lbl">Camera</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button></div>
+          <div class="bl-row"><span class="label">Clip Start</span><span class="bl-num">0.01 m</span></div>
+          <div class="bl-row"><span class="label">Focal Length</span><span class="bl-num">50 mm</span></div>
+        </div>
+      </div>
+      <div class="bl-panel collapsed">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">3D Cursor</span></div>
+        <div class="bl-panel-body"><div class="bl-row"><span class="label">Location</span><span class="bl-num">0 m</span><span class="bl-num">0 m</span><span class="bl-num">0 m</span></div></div>
+      </div>
+      <div class="bl-panel collapsed">
+        <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Extras</span></div>
+        <div class="bl-panel-body"><div class="bl-row"><span class="label">Indicators</span><span class="bl-field"><span class="lbl">Overlays</span></span></div></div>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+    </div>
+  </section>
+  <div class="bl-split" data-axis="x" data-target="rightCol" data-min="230" data-max="900" data-invert="1"></div>
+  <div class="bl-rightcol" id="rightCol">
+    <section class="bl-area bl-outliner" id="areaOutliner">
+<!-- ------------------------------ Outliner ------------------------------ -->
+<div class="bl-header" id="outlinerHeader">
+  <button class="bl-editortype" data-menu="editorType" data-tip="Editor Type"><svg class="ic"><use href="#i-outliner"/></svg></button>
+  <button class="bl-hdr-menu" data-menu="outlinerDisplayMode" data-tip="Display Mode" data-tip-desc="Что показывать в Outliner (View Layer, Scenes, Data API...).">
+    <span class="lbl">View Layer</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+  </button>
+  <button class="bl-hdr-menu" data-menu="outlinerFilter" data-tip="Filter" data-tip-desc="Фильтр по типам данных."><svg class="ic ic-14"><use href="#i-filter"/></svg></button>
+  <button class="bl-hdr-menu" data-menu="outlinerSearch" data-tip="Search" data-tip-desc="Поиск по дереву сцены."><svg class="ic ic-14"><use href="#i-search"/></svg></button>
+  <button class="bl-hdr-menu" data-menu="outlinerNewCollection" data-tip="New Collection" data-tip-desc="Создать коллекцию."><svg class="ic ic-14"><use href="#i-plus"/></svg></button>
+  <span class="sp"></span>
+  <button class="bl-editortype" data-menu="headerOptions" data-tip="Options"><svg class="ic"><use href="#i-settings"/></svg></button>
+</div>
+<div class="bl-outliner-body" id="outlinerBody">
+  <div class="bl-field bl-hidden" id="outlinerSearchField" style="margin:4px 4px 2px">
+    <svg class="ic ic-12"><use href="#i-search"/></svg><input type="text" placeholder="Search" id="outlinerSearchInput">
+  </div>
+  <div class="bl-list">
+    <div class="bl-li" data-node="scene" data-tip="Scene Collection" data-tip-desc="Корневая коллекция файла.">
+      <span class="tri"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+      <span class="icon" style="color:var(--icon-data)"><svg class="ic ic-14"><use href="#i-scene"/></svg></span>
+      <span class="lbl">Scene Collection</span>
+      <span class="toggles">
+        <span class="tgl" data-toggle="vis"><svg class="ic ic-14"><use href="#i-eye"/></svg></span>
+        <span class="tgl" data-toggle="sel"><svg class="ic ic-14"><use href="#i-pointer"/></svg></span>
+      </span>
+    </div>
+    <div class="bl-li" data-node="collection" data-tip="Collection" data-tip-desc="Коллекция объектов сцены.">
+      <span class="tri"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+      <span class="icon" style="color:var(--icon-collection)"><svg class="ic ic-14"><use href="#i-collection"/></svg></span>
+      <span class="lbl">Collection</span>
+      <span class="toggles">
+        <span class="tgl" data-toggle="vis"><svg class="ic ic-14"><use href="#i-eye"/></svg></span>
+        <span class="tgl" data-toggle="sel"><svg class="ic ic-14"><use href="#i-pointer"/></svg></span>
+      </span>
+    </div>
+    <div class="bl-li" data-depth="1" data-node="camera" data-tip="Camera" data-tip-desc="Camera · активная камера сцены.">
+      <span class="tri" style="visibility:hidden"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+      <span class="icon" style="color:var(--icon-object)"><svg class="ic ic-14"><use href="#i-camobj"/></svg></span>
+      <span class="lbl">Camera</span>
+      <span class="toggles">
+        <span class="tgl" data-toggle="vis"><svg class="ic ic-14"><use href="#i-eye"/></svg></span>
+        <span class="tgl" data-toggle="sel"><svg class="ic ic-14"><use href="#i-pointer"/></svg></span>
+        <span class="tgl" data-toggle="monitor" style="color:var(--icon-data)"><svg class="ic ic-14"><use href="#i-monitor"/></svg></span>
+      </span>
+    </div>
+    <div class="bl-li sel active" data-depth="1" data-node="cube" data-tip="Cube" data-tip-desc="Mesh · 8 вершин · активный объект сцены.">
+      <span class="tri" style="visibility:hidden"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+      <span class="icon" style="color:var(--icon-object)"><svg class="ic ic-14"><use href="#i-mesh"/></svg></span>
+      <span class="lbl">Cube</span>
+      <span class="toggles">
+        <span class="tgl" data-toggle="vis"><svg class="ic ic-14"><use href="#i-eye"/></svg></span>
+        <span class="tgl" data-toggle="sel"><svg class="ic ic-14"><use href="#i-pointer"/></svg></span>
+        <span class="tgl" data-toggle="monitor" style="color:var(--icon-data)"><svg class="ic ic-14"><use href="#i-monitor"/></svg></span>
+      </span>
+    </div>
+    <div class="bl-li" data-depth="1" data-node="light" data-tip="Light" data-tip-desc="Light · точечный источник.">
+      <span class="tri" style="visibility:hidden"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+      <span class="icon" style="color:var(--icon-object)"><svg class="ic ic-14"><use href="#i-light"/></svg></span>
+      <span class="lbl">Light</span>
+      <span class="toggles">
+        <span class="tgl" data-toggle="vis"><svg class="ic ic-14"><use href="#i-eye"/></svg></span>
+        <span class="tgl" data-toggle="sel"><svg class="ic ic-14"><use href="#i-pointer"/></svg></span>
+        <span class="tgl" data-toggle="monitor" style="color:var(--icon-data)"><svg class="ic ic-14"><use href="#i-monitor"/></svg></span>
+      </span>
+    </div>
+  </div>
+</div>
+
+    </section>
+    <div class="bl-split" data-axis="y" data-target="outlinerBody" data-min="60" data-invert="1"></div>
+    <section class="bl-area bl-properties" id="areaProps">
+<!-- --------------------------- Properties: header ----------------------- -->
+<div class="bl-header" id="propsHeader">
+  <button class="bl-editortype" data-menu="editorType" data-tip="Editor Type"><svg class="ic"><use href="#i-settings"/></svg></button>
+  <span class="bl-field bl-hdr-field" data-tip="Display Filter" data-tip-key="Ctrl+F" data-tip-desc="Поиск свойств по имени (Ctrl+F, очистка Alt+F).">
+    <svg class="ic ic-12"><use href="#i-search"/></svg>
+    <input type="text" placeholder="Search" id="propsFilterInput">
+  </span>
+  <span class="bl-hdr-sep"></span>
+  <span class="bl-props-path" data-tip="Data Context Path" data-tip-desc="Иерархия активного дата-блока.">
+    <svg class="ic ic-14" style="color:var(--icon-object)"><use href="#i-object"/></svg><span class="lbl">Cube</span>
+    <span class="sep">&rsaquo;</span>
+    <svg class="ic ic-14" style="color:var(--icon-data)"><use href="#i-mesh"/></svg><span class="lbl">Mesh</span>
+    <span class="sep">&rsaquo;</span>
+    <svg class="ic ic-14" style="color:var(--icon-shading)"><use href="#i-material"/></svg><span class="lbl">Material</span>
+  </span>
+  <span class="sp"></span>
+  <button class="bl-hdr-tgl icon-only" id="btnPinID" data-tip="Toggle Pin ID" data-tip-desc="Закрепить редактор за текущим дата-блоком."><svg class="ic ic-14"><use href="#i-pin"/></svg></button>
+  <button class="bl-editortype" data-menu="headerOptions" data-tip="Options" data-tip-desc="Options popover: Sync with Outliner и др."><svg class="ic"><use href="#i-filter"/></svg></button>
+</div>
+
+      <div class="bl-props-body">
+<div class="bl-navbar" id="propsNav">
+  <button class="bl-navbtn active" data-tab="tool" data-tip="Active Tool and Workspace Settings" data-tip-desc="Настройки активного инструмента и рабочей области."><svg class="ic"><use href="#i-settings"/></svg></button>
+  <button class="bl-navbtn" data-tab="render" data-tip="Render" data-tip-desc="Настройки движка рендера."><svg class="ic"><use href="#i-camera"/></svg></button>
+  <button class="bl-navbtn" data-tab="output" data-tip="Output" data-tip-desc="Путь, формат и метаданные вывода."><svg class="ic"><use href="#i-printer"/></svg></button>
+  <button class="bl-navbtn" data-tab="viewlayer" data-tip="View Layer" data-tip-desc="Слои и фильтры вида."><svg class="ic"><use href="#i-layers"/></svg></button>
+  <button class="bl-navbtn" data-tab="scene" data-tip="Scene" data-tip-desc="Сцена: камера, разрешение, единицы."><svg class="ic"><use href="#i-scene"/></svg></button>
+  <button class="bl-navbtn" data-tab="world" data-tip="World" data-tip-desc="Окружение (Background)."><svg class="ic"><use href="#i-globe"/></svg></button>
+  <button class="bl-navbtn" data-tab="collection" data-tip="Collection" data-tip-desc="Свойства активной коллекции."><svg class="ic"><use href="#i-collection"/></svg></button>
+  <button class="bl-navbtn" data-tab="object" data-tip="Object" data-tip-desc="Трансформация и видимость объекта."><svg class="ic"><use href="#i-object"/></svg></button>
+  <button class="bl-navbtn" data-tab="modifiers" data-tip="Modifiers" data-tip-desc="Стек модификаторов."><svg class="ic"><use href="#i-wrench"/></svg></button>
+  <button class="bl-navbtn" data-tab="particles" data-tip="Particles" data-tip-desc="Системы частиц."><svg class="ic"><use href="#i-particles"/></svg></button>
+  <button class="bl-navbtn" data-tab="physics" data-tip="Physics" data-tip-desc="Физические свойства объекта."><svg class="ic"><use href="#i-physics"/></svg></button>
+  <button class="bl-navbtn" data-tab="constraints" data-tip="Object Constraints" data-tip-desc="Ограничители объекта."><svg class="ic"><use href="#i-constraint"/></svg></button>
+  <button class="bl-navbtn" data-tab="data" data-tip="Object Data" data-tip-desc="Данные объекта: UV, атрибуты, цвета."><svg class="ic"><use href="#i-mesh"/></svg></button>
+  <button class="bl-navbtn" data-tab="material" data-tip="Material" data-tip-desc="Материал и Surface-шейдер."><svg class="ic"><use href="#i-material"/></svg></button>
+  <button class="bl-navbtn" data-tab="texture" data-tip="Texture" data-tip-desc="Текстура проекта."><svg class="ic"><use href="#i-texture"/></svg></button>
+  <button class="bl-navbtn" data-tab="visible" data-tip="Visible Tabs" data-tip-desc="Какие вкладки показывать."><svg class="ic"><use href="#i-filter"/></svg></button>
+</div>
+<div class="bl-props-pages" id="propsPages">
+  <!-- ============ Active Tool and Workspace Settings ============ -->
+  <section class="bl-page active" data-page="tool">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-selectbox"/></svg>
+      <span class="name">Select Box</span>
+      <span class="tgl" data-tip="Brush Settings"><svg class="ic ic-14"><use href="#i-grip"/></svg></span>
+      <span class="tgl" data-tip="Brush Assets"><svg class="ic ic-14"><use href="#i-folder"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="tool-opts">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Options</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Panel Options" data-tip-desc="Закрепить, скрыть, отключить панель."><svg class="ic ic-12"><use href="#i-filter"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Mode</span>
+          <div class="bl-enum" data-enum="selectmode">
+            <button class="bl-btn on">Set</button><button class="bl-btn">Add</button><button class="bl-btn">Sub</button>
+          </div>
+        </div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Select All Edges</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Select All Faces</span></div>
+        <div class="bl-note">Выделение рамкой: <b>LMB</b>, добавление — <b>Shift+LMB</b>.</div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="tool-workspace">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Workspace</span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Color Mgmt</span><span class="bl-field"><span class="lbl">Filmic</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Filter Add-ons</span><span class="bl-field"><svg class="ic ic-12"><use href="#i-search"/></svg><input type="text" placeholder="Search"></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use Filter</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== Render =============================== -->
+  <section class="bl-page" data-page="render">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-camera"/></svg>
+      <span class="name">EeVEE</span>
+      <span class="tgl" data-menu="renderPresets" data-tip="Render Presets"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+      <span class="tgl" data-tip="Add Render Preset"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+      <span class="tgl" data-tip="Copy Render Settings"><svg class="ic ic-14"><use href="#i-copy"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="render-engine">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Render Engine</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Show Second Layer"><svg class="ic ic-12"><use href="#i-holdout"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Engine</span>
+          <span class="bl-field" data-menu="engineList" data-tip="Render Engine" data-tip-desc="EEVEE / Cycles / Workbench"><span class="lbl">EeVEE</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="render-sampling">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Sampling</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Render</span><span class="bl-num"><span class="fill" style="inset:0 25% 0 0"></span><span>64</span></span></div>
+        <div class="bl-row"><span class="label">Viewport</span><span class="bl-num"><span class="fill" style="inset:0 75% 0 0"></span><span>16</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Denoise</span></div>
+        <div class="bl-chkrow"><span class="bl-check"><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Temporal Reprojection</span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="render-raytracing">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Raytracing</span>
+        <span class="tools"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Method</span>
+          <div class="bl-enum" data-enum="rtmethod"><button class="bl-btn on">Screen-Trace</button><button class="bl-btn">Light Probe</button></div>
+        </div>
+        <div class="bl-row"><span class="label">Resolution</span><span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span>1:1</span></span></div>
+        <div class="bl-row"><span class="label">Rays</span><span class="bl-num"><span class="fill" style="inset:0 40% 0 0"></span><span>Medium</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="render-film">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Film</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Transparent</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Transparent Glass</span></div>
+        <div class="bl-row"><span class="label">Filter Size</span><span class="bl-num"><span class="fill" style="inset:0 85% 0 0"></span><span>1.50 px</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="render-cm">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Color Management</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">View Transform</span><span class="bl-field"><span class="lbl">Standard</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Look</span><span class="bl-field"><span class="lbl">None</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Exposure</span><span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span>0.000</span></span></div>
+        <div class="bl-row"><span class="label">Gamma</span><span class="bl-num"><span class="fill" style="inset:0 20% 0 0"></span><span>1.000</span></span></div>
+      </div>
+    </div>
+  </section>
+  <!-- ============================== Output =============================== -->
+  <section class="bl-page" data-page="output">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-printer"/></svg>
+      <span class="name">Output</span>
+    </div>
+    <div class="bl-panel" data-panel="out-path">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Output</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Path</span>
+          <span class="bl-field"><span class="lbl">//</span><input type="text" placeholder="Output Path"></span>
+          <button class="bl-btn icon-only" data-tip="Browse output path"><svg class="ic ic-14"><use href="#i-folder"/></svg></button>
+        </div>
+        <div class="bl-row"><span class="label">File Format</span><span class="bl-field"><span class="lbl">PNG</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Color</span><span class="bl-field"><span class="lbl">RGBA</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Compression</span><span class="bl-num"><span class="fill" style="inset:0 15% 0 0"></span><span>15%</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Overwrite</span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="out-meta">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Metadata</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Date</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Time</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Render Time</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Frame</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Scene</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>File Name</span></div>
+        <div class="bl-row"><span class="label">Stamp Font</span><span class="bl-field"><span class="lbl">Sans Serif</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+      </div>
+    </div>
+  </section>
+  <!-- ============================ View Layer ============================= -->
+  <section class="bl-page" data-page="viewlayer">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-layers"/></svg>
+      <span class="name">ViewLayer</span>
+      <span class="tgl" data-tip="View Layer Presets"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="vl-layer">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Layer</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use for Rendering</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Visible</span></div>
+        <div class="bl-row"><span class="label">Layer</span><span class="bl-field"><span class="lbl">ViewLayer</span></span></div>
+        <div class="bl-row"><span class="label">Material</span><span class="bl-field" data-menu="vlMaterial"><span class="lbl">All</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="vl-filter">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Filter</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Mesh</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Curve</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Light</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Camera</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Empty</span></div>
+      </div>
+    </div>
+  </section>
+  <!-- ============================== Object =============================== -->
+  <section class="bl-page" data-page="object">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-object"/></svg>
+      <span class="name">Cube</span>
+      <span class="tgl" data-menu="objPresets" data-tip="Object Presets"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+      <span class="tgl" data-tip="Add Object"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="obj-transform">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Transform</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Location</span>
+          <span class="bl-num" data-tip="X" data-tip-desc="Локация по X"><span class="fill" style="inset:0 50% 0 0"></span><span class="ax-x">X</span>&nbsp;<span>0 m</span></span>
+          <span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span class="ax-y">Y</span>&nbsp;<span>0 m</span></span>
+          <span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span class="ax-z">Z</span>&nbsp;<span>0 m</span></span>
+        </div>
+        <div class="bl-row"><span class="label">Rotation</span>
+          <span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span class="ax-x">X</span>&nbsp;<span>0&deg;</span></span>
+          <span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span class="ax-y">Y</span>&nbsp;<span>0&deg;</span></span>
+          <span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span class="ax-z">Z</span>&nbsp;<span>0&deg;</span></span>
+        </div>
+        <div class="bl-row"><span class="label">Scale</span>
+          <span class="bl-num"><span class="fill" style="inset:0 0 0 0"></span><span class="ax-x">X</span>&nbsp;<span>1.000</span></span>
+          <span class="bl-num"><span class="fill" style="inset:0 0 0 0"></span><span class="ax-y">Y</span>&nbsp;<span>1.000</span></span>
+          <span class="bl-num"><span class="fill" style="inset:0 0 0 0"></span><span class="ax-z">Z</span>&nbsp;<span>1.000</span></span>
+        </div>
+        <div class="bl-row"><span class="label">Rotation Mode</span><span class="bl-field"><span class="lbl">XYZ Euler</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="obj-relations">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Relations</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Parent</span><span class="bl-field"><span class="lbl">Scene Collection</span></span></div>
+        <div class="bl-row"><span class="label">Tracking Axis</span>
+          <div class="bl-enum" data-enum="trackaxis">
+            <button class="bl-btn on">+X</button><button class="bl-btn">+Y</button><button class="bl-btn">+Z</button>
+          </div>
+        </div>
+        <div class="bl-row"><span class="label">Up Axis</span>
+          <div class="bl-enum" data-enum="upaxis">
+            <button class="bl-btn">+X</button><button class="bl-btn">+Y</button><button class="bl-btn on">+Z</button>
+          </div>
+        </div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Pass Index</span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="obj-visibility">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Visibility</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Show in</span>
+          <span class="bl-widgeticon on" data-tip="Show in Viewports"><svg class="ic ic-14"><use href="#i-monitor"/></svg></span>
+          <span class="bl-widgeticon on" data-tip="Show in Renders"><svg class="ic ic-14"><use href="#i-camera"/></svg></span>
+        </div>
+        <div class="bl-row"><span class="label">Selectable</span>
+          <span class="bl-widgeticon on" data-tip="Selectable in Viewport"><svg class="ic ic-14"><use href="#i-pointer"/></svg></span>
+        </div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Shadow</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Diffuse</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Glossy</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Volume Scatter</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= Collection ============================ -->
+  <section class="bl-page" data-page="collection">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-collection"/></svg>
+      <span class="name">Collection</span>
+      <span class="tgl" data-tip="Add Collection"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="col-main">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Collection</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Name</span><span class="bl-field"><span class="lbl">Collection</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Holdout</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Indirect Only</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Is Shadow Catcher</span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="col-restrictions">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Restrictions</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Disable</span>
+          <span class="bl-widgeticon" data-tip="Disable in Renders"><svg class="ic ic-14"><use href="#i-camera"/></svg></span>
+          <span class="bl-widgeticon" data-tip="Disable in Viewports"><svg class="ic ic-14"><use href="#i-monitor"/></svg></span>
+          <span class="bl-widgeticon" data-tip="Disable in the Viewport"><svg class="ic ic-14"><use href="#i-eye"/></svg></span>
+        </div>
+        <div class="bl-row"><span class="label">Hide</span>
+          <span class="bl-widgeticon" data-tip="Hide in Renders"><svg class="ic ic-14"><use href="#i-eye-off"/></svg></span>
+          <span class="bl-widgeticon" data-tip="Hide in Viewports"><svg class="ic ic-14"><use href="#i-eye-off"/></svg></span>
+        </div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="col-custom">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Custom Properties</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Add Property"><svg class="ic ic-12"><use href="#i-plus"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body"><div class="bl-note">Нет пользовательских свойств.</div></div>
+    </div>
+  </section>
+
+  <!-- =============================== World =============================== -->
+  <section class="bl-page" data-page="world">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-globe"/></svg>
+      <span class="name">World</span>
+      <span class="tgl" data-tip="World Presets"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+      <span class="tgl" data-tip="Add World"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="world-preview">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Preview</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Render Preview"><svg class="ic ic-12"><use href="#i-camera"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row" style="justify-content:center">
+          <div class="bl-sphere sp-mat" style="width:64px;height:64px"></div>
+        </div>
+        <div class="bl-row" style="justify-content:center">
+          <button class="bl-btn icon-only" data-tip="Refresh Preview"><svg class="ic ic-14"><use href="#i-redo"/></svg></button>
+          <button class="bl-btn icon-only" data-tip="Preview World"><svg class="ic ic-14"><use href="#i-eye"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="world-surface">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Surface</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Clear Surface"><svg class="ic ic-12"><use href="#i-x"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use Nodes</span></div>
+        <div class="bl-row"><span class="label">Surface</span><span class="bl-field"><span class="lbl">Background</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Color</span>
+          <span class="bl-swatch" style="background:linear-gradient(135deg,#8f8f8f,#5c5c5c)"></span>
+          <span class="bl-num"><span>0.050</span></span><span class="bl-num"><span>0.050</span></span>
+        </div>
+        <div class="bl-row"><span class="label">Strength</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>1.000</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="world-settings">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Settings</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Light Probe Volume</span></div>
+        <div class="bl-row"><span class="label">Resolution</span><span class="bl-num"><span class="fill" style="inset:0 30% 0 0"></span><span>Medium</span></span></div>
+        <div class="bl-row"><span class="label">Bias</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>0.010</span></span></div>
+        <div class="bl-row"><span class="label">Distance</span><span class="bl-num"><span class="fill" style="inset:0 60% 0 0"></span><span>1.00 m</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="world-custom">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Custom Properties</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Add Property"><svg class="ic ic-12"><use href="#i-plus"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body"><div class="bl-note">Нет пользовательских свойств.</div></div>
+    </div>
+  </section>
+
+  <!-- =============================== Scene =============================== -->
+  <section class="bl-page" data-page="scene">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-scene"/></svg>
+      <span class="name">Scene</span>
+      <span class="tgl" data-tip="Scene Presets"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+      <span class="tgl" data-tip="New Scene"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="scene-main">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Scene</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Camera</span><span class="bl-field"><svg class="ic ic-14"><use href="#i-camera"/></svg><span class="lbl">Camera</span></span></div>
+        <div class="bl-row"><span class="label">Resolution</span>
+          <span class="bl-num"><span class="ax-x">X</span>&nbsp;<span>1920 px</span></span>
+          <span class="bl-num"><span class="ax-y">Y</span>&nbsp;<span>1080 px</span></span>
+          <span class="bl-num"><span class="fill" style="inset:0 0 0 0"></span><span>100%</span></span>
+        </div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Render Region</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Frame Dropping</span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="scene-units">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Units</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Unit System</span><span class="bl-field"><span class="lbl">Metric</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Unit Scale</span><span class="bl-num"><span class="fill" style="inset:0 95% 0 0"></span><span>1.000</span></span></div>
+        <div class="bl-row"><span class="label">Length</span><span class="bl-field"><span class="lbl">Meters</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Rotation</span><span class="bl-field"><span class="lbl">Degrees</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Mass</span><span class="bl-field"><span class="lbl">Kilograms</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="scene-audio">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Audio</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Muted</span></div>
+        <div class="bl-row"><span class="label">Volume</span><span class="bl-num"><span class="fill" style="inset:0 0 0 0"></span><span>1.000</span></span></div>
+        <div class="bl-row"><span class="label">Audio Offset</span><span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span>0.0</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="scene-gravity">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Gravity</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-menu="gravityPresets" data-tip="Presets"><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Gravity</span><span class="bl-num"><span class="fill" style="inset:0 98% 0 0"></span><span>9.810</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="scene-custom">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Custom Properties</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Add Property"><svg class="ic ic-12"><use href="#i-plus"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body"><div class="bl-note">Нет пользовательских свойств.</div></div>
+    </div>
+  </section>
+
+  <!-- ============================== Texture ============================== -->
+  <section class="bl-page" data-page="texture">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-texture"/></svg>
+      <span class="name">Texture</span>
+      <span class="tgl" data-tip="Browse Texture to be linked"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+      <span class="tgl" data-tip="New Texture"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+      <span class="tgl" data-tip="Delete Texture"><svg class="ic ic-14"><use href="#i-x"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="tex-preview">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Preview</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Refresh Preview"><svg class="ic ic-12"><use href="#i-redo"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row" style="justify-content:center">
+          <span class="bl-swatch" style="width:64px;height:64px;background:repeating-conic-gradient(#bfbfbf 0 25%,#7d7d7d 0 50%) 0 0/16px 16px"></span>
+        </div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="tex-main">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Texture</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Type</span><span class="bl-field"><span class="lbl">Image</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Name</span><span class="bl-field"><span class="lbl">Texture</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="tex-image">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Image</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row">
+          <button class="bl-btn">Open</button>
+          <button class="bl-btn">Reload</button>
+        </div>
+        <div class="bl-row"><span class="label">Source</span><span class="bl-field"><span class="lbl">Single Image</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">File</span><span class="bl-field"><span class="lbl">//</span><input type="text" placeholder="Path"></span></div>
+        <div class="bl-row"><span class="label">Color Space</span><span class="bl-field"><span class="lbl">sRGB</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Alpha</span><span class="bl-field"><span class="lbl">Straight</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Interpolation</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Flip X / Y</span></div>
+      </div>
+    </div>
+  </section>
+  <!-- =========================== Visible Tabs ============================ -->
+  <section class="bl-page" data-page="visible">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-filter"/></svg>
+      <span class="name">Visible Tabs</span>
+    </div>
+    <div class="bl-panel" data-panel="vis-tabs">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Show Tabs</span></div>
+      <div class="bl-panel-body" id="visibleTabList"></div>
+    </div>
+  </section>
+
+  <!-- ============================= Material ============================== -->
+  <section class="bl-page" data-page="material">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:var(--icon-shading)"><use href="#i-material"/></svg>
+      <span class="name">Material</span>
+      <span class="tgl" data-menu="matBlock" data-tip="Browse Material to be linked"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+      <span class="tgl" data-tip="New Material"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+      <span class="tgl" data-tip="Paste Material"><svg class="ic ic-14"><use href="#i-paste"/></svg></span>
+      <span class="tgl" data-tip="Unlink Material"><svg class="ic ic-14"><use href="#i-x"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="mat-preview">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Preview</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Render Preview"><svg class="ic ic-12"><use href="#i-camera"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row" style="justify-content:center">
+          <div class="bl-sphere sp-mat" style="width:64px;height:64px"></div>
+        </div>
+        <div class="bl-row" style="justify-content:center">
+          <button class="bl-btn icon-only" data-tip="Preview Type"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></button>
+          <button class="bl-btn icon-only" data-tip="Refresh Preview"><svg class="ic ic-14"><use href="#i-redo"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="mat-surface">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Surface</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Clear the surface node"><svg class="ic ic-12"><use href="#i-x"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use Nodes</span></div>
+        <div class="bl-row"><span class="label">Surface</span><span class="bl-field"><span class="lbl">Principled BSDF</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Base Color</span>
+          <span class="bl-swatch" style="background:linear-gradient(135deg,#e0b0a8,#a86a58)"></span>
+          <span class="bl-num"><span>0.800</span></span><span class="bl-num"><span>0.800</span></span>
+        </div>
+        <div class="bl-row"><span class="label">Metallic</span><span class="bl-num"><span class="fill" style="inset:0 100% 0 0"></span><span>0.000</span></span></div>
+        <div class="bl-row"><span class="label">Roughness</span><span class="bl-num"><span class="fill" style="inset:0 25% 0 0"></span><span>0.500</span></span></div>
+        <div class="bl-row"><span class="label">IOR</span><span class="bl-num"><span class="fill" style="inset:0 20% 0 0"></span><span>1.450</span></span></div>
+        <div class="bl-row"><span class="label">Alpha</span><span class="bl-num"><span class="fill" style="inset:0 0 0 0"></span><span>1.000</span></span></div>
+        <div class="bl-row"><span class="label">Emission</span><span class="bl-num"><span class="fill" style="inset:0 100% 0 0"></span><span>0.000</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="mat-settings">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Settings</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Render Method</span><span class="bl-field"><span class="lbl">Dithered</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Shadow Mode</span><span class="bl-field"><span class="lbl">Opaque</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Backface Culling</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Camera Cull</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Transparent Shadows</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ Object Data ============================ -->
+  <section class="bl-page" data-page="data">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:var(--icon-data)"><use href="#i-mesh"/></svg>
+      <span class="name">Cube</span>
+      <span class="tgl" data-tip="Data-block Menu"><svg class="ic ic-14"><use href="#i-chev-down"/></svg></span>
+      <span class="tgl" data-tip="New Mesh"><svg class="ic ic-14"><use href="#i-plus"/></svg></span>
+      <span class="tgl" data-tip="Unlink Mesh"><svg class="ic ic-14"><use href="#i-x"/></svg></span>
+    </div>
+    <div class="bl-panel" data-panel="data-normals">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Normals</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Auto Smooth</span></div>
+        <div class="bl-row"><span class="label">Angle</span><span class="bl-num"><span class="fill" style="inset:0 30% 0 0"></span><span>30&deg;</span></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="data-uv">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">UV Maps</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Add UV Map"><svg class="ic ic-12"><use href="#i-plus"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-list">
+          <div class="bl-li sel" data-depth="0"><svg class="ic ic-14"><use href="#i-eye"/></svg><span class="lbl">UVMap</span>
+            <svg class="ic ic-14 bl-dim"><use href="#i-minus"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="data-colors">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Color Attributes</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Add Color Attribute"><svg class="ic ic-12"><use href="#i-plus"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-list">
+          <div class="bl-li"><span class="bl-swatch" style="background:#ffffff"></span><span class="lbl">Attribute</span>
+            <svg class="ic ic-14 bl-dim"><use href="#i-minus"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="data-attrs">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Attributes</span>
+        <span class="tools"><button class="bl-btn icon-only flat" data-tip="Add Attribute"><svg class="ic ic-12"><use href="#i-plus"/></svg></button></span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Show Derived</span></div>
+        <div class="bl-row"><span class="label">Filter</span><span class="bl-field"><svg class="ic ic-12"><use href="#i-search"/></svg><input type="text" placeholder="Search"></span></div>
+      </div>
+    </div>
+    <div class="bl-panel" data-panel="data-geom">
+      <div class="bl-panel-head"><span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span><span class="title">Geometry Data</span></div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><button class="bl-btn">Clear Custom Split Normals Data</button></div>
+        <div class="bl-row"><button class="bl-btn">Clear Sharp Edges</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ Constraints ============================ -->
+  <section class="bl-page" data-page="constraints">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-constraint"/></svg>
+      <span class="name">Cube</span>
+    </div>
+    <div class="bl-panel bl-subpanel" data-panel="con-copyloc">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Copy Location</span>
+        <span class="tools">
+          <button class="bl-btn icon-only flat" data-menu="conSettings" data-tip="Constraint Options"><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Delete Constraint"><svg class="ic ic-12"><use href="#i-x"/></svg></button>
+        </span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Target</span><span class="bl-field"><svg class="ic ic-14"><use href="#i-object"/></svg><span class="lbl">Cube.001</span></span></div>
+        <div class="bl-row"><span class="label">Owner Space</span><span class="bl-field"><span class="lbl">World Space</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Target Space</span><span class="bl-field"><span class="lbl">World Space</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Copy</span>
+          <div class="bl-grid3">
+            <span class="bl-widgeticon on" data-tip="Copy X"><span class="ax-x">X</span></span>
+            <span class="bl-widgeticon on" data-tip="Copy Y"><span class="ax-y">Y</span></span>
+            <span class="bl-widgeticon" data-tip="Copy Z"><span class="ax-z">Z</span></span>
+          </div>
+        </div>
+        <div class="bl-row"><span class="label">Influence</span><span class="bl-num"><span class="fill" style="inset:0 0 0 0"></span><span>1.000</span></span></div>
+      </div>
+    </div>
+    <div class="bl-row" style="padding:2px 6px 0">
+      <span class="bl-field" data-menu="addConstraint" data-tip="Add Object Constraint" data-tip-desc="Track To, Follow Path, Limit…">
+        <svg class="ic ic-12"><use href="#i-plus"/></svg><span class="lbl">Add Object Constraint</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+      </span>
+    </div>
+  </section>
+
+  <!-- ============================== Physics ============================== -->
+  <section class="bl-page" data-page="physics">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-physics"/></svg>
+      <span class="name">Cube</span>
+    </div>
+    <div class="bl-panel bl-subpanel" data-panel="phys-rigid">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Rigid Body</span>
+        <span class="tools">
+          <button class="bl-btn icon-only flat" data-menu="rbSettings" data-tip="Rigid Body Options"><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Delete Rigid Body"><svg class="ic ic-12"><use href="#i-x"/></svg></button>
+        </span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Type</span>
+          <div class="bl-enum" data-enum="rbtype"><button class="bl-btn on">Active</button><button class="bl-btn">Passive</button></div>
+        </div>
+        <div class="bl-row"><span class="label">Mass</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>1.000 kg</span></span></div>
+        <div class="bl-row"><span class="label">Friction</span><span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span>0.500</span></span></div>
+        <div class="bl-row"><span class="label">Bounciness</span><span class="bl-num"><span class="fill" style="inset:0 100% 0 0"></span><span>0.000</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Dynamic</span></div>
+      </div>
+    </div>
+    <div class="bl-panel bl-subpanel" data-panel="phys-dynamics">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Dynamics</span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Damping</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>0.040</span></span></div>
+        <div class="bl-row"><span class="label">Collision Margin</span><span class="bl-num"><span class="fill" style="inset:0 100% 0 0"></span><span>0.040 m</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Sleeping</span></div>
+      </div>
+    </div>
+    <div class="bl-row" style="padding:2px 6px 0">
+      <span class="bl-field" data-menu="addPhysics" data-tip="Add Physics" data-tip-desc="Добавить физический модификатор: Collision, Cloth, Fluid, Soft Body…">
+        <svg class="ic ic-12"><use href="#i-plus"/></svg><span class="lbl">Add Physics</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- ============================= Particles ============================= -->
+  <section class="bl-page" data-page="particles">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-particles"/></svg>
+      <span class="name">Cube</span>
+    </div>
+    <div class="bl-panel bl-subpanel" data-panel="ps-main">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">ParticleSystem</span>
+        <span class="tools">
+          <button class="bl-btn icon-only flat" data-menu="psSettings" data-tip="Particle System Options"><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Copy Particle Settings"><svg class="ic ic-12"><use href="#i-copy"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Delete Particle System"><svg class="ic ic-12"><use href="#i-x"/></svg></button>
+        </span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Type</span>
+          <div class="bl-enum" data-enum="pstype"><button class="bl-btn on">Emitter</button><button class="bl-btn">Hair</button></div>
+        </div>
+        <div class="bl-row"><span class="label">Seed</span><span class="bl-num"><span>0</span></span></div>
+        <div class="bl-row"><span class="label">Emission</span><span class="bl-num"><span class="fill" style="inset:0 50% 0 0"></span><span>1000</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Advanced</span></div>
+      </div>
+    </div>
+    <div class="bl-panel bl-subpanel" data-panel="ps-velocity">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Velocity</span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Normal</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>1.000 m/s</span></span></div>
+        <div class="bl-row"><span class="label">Randomness</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>0.000</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Object Align</span></div>
+      </div>
+    </div>
+    <div class="bl-row" style="padding:2px 6px 0">
+      <span class="bl-field" data-menu="addParticleSystem" data-tip="Add Particle System" data-tip-desc="Создать новую систему частиц для объекта.">
+        <svg class="ic ic-12"><use href="#i-plus"/></svg><span class="lbl">Add Particle System</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- ============================ Modifiers ============================== -->
+  <section class="bl-page" data-page="modifiers">
+    <div class="bl-idrow">
+      <svg class="ic" style="color:#d0d0d0"><use href="#i-wrench"/></svg>
+      <span class="name">Cube</span>
+    </div>
+    <div class="bl-panel bl-subpanel" data-panel="mod-subdiv">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Subdivision</span>
+        <span class="tools">
+          <button class="bl-btn icon-only flat" data-menu="modSettings" data-tip="Modifier Options"><svg class="ic ic-12"><use href="#i-chev-down"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Apply modifier on the mesh data" data-tip-key="Ctrl+A"><svg class="ic ic-12"><use href="#i-check"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Duplicate this modifier" data-tip-key="Shift+D"><svg class="ic ic-12"><use href="#i-copy"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Move modifier up in the stack"><svg class="ic ic-12"><use href="#i-arrow-up"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Move modifier down in the stack"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></button>
+          <button class="bl-btn icon-only flat" data-tip="Delete modifier" data-tip-key="X"><svg class="ic ic-12"><use href="#i-x"/></svg></button>
+        </span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Type</span><span class="bl-field"><span class="lbl">Catmull-Clark</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg></span></div>
+        <div class="bl-row"><span class="label">Levels Viewport</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>1</span></span></div>
+        <div class="bl-row"><span class="label">Render</span><span class="bl-num"><span class="fill" style="inset:0 80% 0 0"></span><span>2</span></span></div>
+        <div class="bl-row"><span class="label">Quality</span><span class="bl-num"><span class="fill" style="inset:0 70% 0 0"></span><span>3</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use Limit Surface</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use Creases</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use Smooth UVs</span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Optimal Display</span></div>
+        <div class="bl-chkrow"><span class="bl-check" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Use Wireframe</span></div>
+      </div>
+    </div>
+    <div class="bl-panel bl-subpanel" data-panel="mod-bevel">
+      <div class="bl-panel-head">
+        <span class="bl-panel-arrow"><svg class="ic ic-12"><use href="#i-tri-down"/></svg></span>
+        <span class="title">Bevel</span>
+      </div>
+      <div class="bl-panel-body">
+        <div class="bl-row"><span class="label">Amount</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>0.020 m</span></span></div>
+        <div class="bl-row"><span class="label">Segments</span><span class="bl-num"><span class="fill" style="inset:0 90% 0 0"></span><span>1</span></span></div>
+        <div class="bl-chkrow"><span class="bl-check on" data-chk><svg class="ic ic-12"><use href="#i-check"/></svg></span><span>Clamp Overlap</span></div>
+      </div>
+    </div>
+    <div class="bl-row" style="padding:2px 6px 0">
+      <span class="bl-field" data-menu="addModifier" data-tip="Add Modifier" data-tip-desc="Поиск и добавление модификатора в стек.">
+        <svg class="ic ic-12"><use href="#i-search"/></svg><span class="lbl">Add Modifier</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+      </span>
+    </div>
+  </section>
+
+</div>
+
+
+
+      </div>
+    </section>
+  </div>
+</div>
+<div class="bl-split" data-axis="y" data-target="areaTimeline" data-min="60" data-max="400" data-invert="1"></div>
+<section class="bl-area bl-timeline" id="areaTimeline">
+<!-- ------------------------------ Timeline ------------------------------ -->
+<div class="bl-header" id="timelineHeader">
+  <button class="bl-editortype" data-menu="editorType" data-tip="Editor Type"><svg class="ic"><use href="#i-timeline"/></svg></button>
+  <button class="bl-hdr-menu" data-menu="playback" data-tip="Playback" data-tip-desc="Синхронизация, аудио, автоключи.">
+    <span class="lbl">Playback</span><svg class="ic ic-12"><use href="#i-chev-down"/></svg>
+  </button>
+  <span class="bl-hdr-sep"></span>
+  <button class="bl-hdr-tgl icon-only" data-tip="Jump to start of playback range" data-tip-key="Shift+Left"><svg class="ic ic-14"><use href="#i-skip-start"/></svg></button>
+  <button class="bl-hdr-tgl icon-only" data-tip="Jump to previous keyframe" data-tip-key="Up"><svg class="ic ic-14"><use href="#i-step-back"/></svg></button>
+  <button class="bl-hdr-tgl icon-only" id="btnPlay" data-tip="Play animation" data-tip-key="Spacebar"><svg class="ic ic-14"><use href="#i-play"/></svg></button>
+  <button class="bl-hdr-tgl icon-only" data-tip="Jump to next keyframe" data-tip-key="Down"><svg class="ic ic-14"><use href="#i-step-fwd"/></svg></button>
+  <button class="bl-hdr-tgl icon-only" data-tip="Jump to end of playback range" data-tip-key="Shift+Right"><svg class="ic ic-14"><use href="#i-skip-end"/></svg></button>
+  <span class="bl-hdr-sep"></span>
+  <button class="bl-hdr-tgl icon-only" data-tgl="autokey" data-tip="Auto Keying" data-tip-desc="Автоматическая запись ключей при изменении."><svg class="ic ic-14" style="color:#e05252"><use href="#i-record"/></svg></button>
+  <span class="bl-hdr-sep"></span>
+  <span class="bl-num" style="max-width:64px;flex:none" data-tip="Current Frame" data-tip-desc="Текущий кадр (1..250).">1</span>
+  <span class="bl-hdr-sep"></span>
+  <span class="bl-num" style="max-width:64px;flex:none" data-tip="Start Frame">1</span>
+  <span class="bl-num" style="max-width:64px;flex:none" data-tip="End Frame">250</span>
+  <span class="sp"></span>
+  <span class="bl-dim">Frame Rate: 24 fps</span>
+  <span class="bl-hdr-sep"></span>
+  <button class="bl-editortype" data-menu="headerOptions" data-tip="Options"><svg class="ic"><use href="#i-settings"/></svg></button>
+</div>
+<div class="bl-timeline-body" id="timelineBody" data-menu="timelineContext">
+  <div class="bl-tl-ruler" id="tlRuler"></div>
+  <div class="bl-tl-body" id="tlBody">
+    <div class="bl-tl-track"></div>
+    <div class="bl-tl-note">Timeline — кадры 1 … 250, текущий кадр 1</div>
+    <div class="bl-tl-out" id="tlOut" style="left:79%"></div>
+  </div>
+</div>
+
+</section>
+</div>
+<!-- ------------------------------ Status Bar ---------------------------- -->
+<footer class="bl-statusbar" id="statusbar">
+  <span class="hint" id="statusHint">Select Box: <b>LMB</b> Set &middot; <b>Shift+LMB</b> Add &middot; <b>Ctrl+LMB</b> Subtract &middot; <b>MMB</b> Rotate View</span>
+  <span class="spring"></span>
+  <span class="stat" data-tip="Mouse Position" data-tip-desc="Экранные координаты курсора." id="statusMouse">X: 0 px, Y: 0 px</span>
+  <span class="stat" data-tip="Scene Statistics">Verts 8 | Faces 6 | Objects 3</span>
+  <span class="stat right" data-tip="Memory">24.51M used, 24.51M peak</span>
+  <span class="stat right" data-tip="Version">Blender 4.2.0</span>
+</footer>
+
+</div>
+<div class="bl-menu-layer" id="menuLayer"></div>
+<div class="bl-tip" id="tip" role="tooltip"></div>
+<script>
+/* ======================================================================
+   1. Утилиты: выборка, SVG-хелпер, тултипы, подсказка в статус-баре
+   ====================================================================== */
+function $(sel,root){return (root||document).querySelector(sel)}
+function $$(sel,root){return Array.prototype.slice.call((root||document).querySelectorAll(sel))}
+function svgc(id,cls){return '<svg class="ic '+(cls||'')+'"><use href="#'+id+'"/></svg>'}
+function has(el,cls){return el.classList.contains(cls)}
+function toggle(el,cls,force){el.classList.toggle(cls,force)}
+
+var SHINT=document.getElementById('statusHint');
+var SHINT_ORIG=SHINT?SHINT.innerHTML:'';
+var shintTimer=0;
+function setHint(html,ms){
+  if(!SHINT)return;
+  SHINT.innerHTML=html;
+  clearTimeout(shintTimer);
+  shintTimer=setTimeout(function(){SHINT.innerHTML=SHINT_ORIG},ms||2600);
+}
+
+/* ------------------------------ tooltip -------------------------------- */
+var TIP=document.getElementById('tip');
+var tipTimer=0,tipEl=null;
+function placeTip(){
+  if(!TIP||!tipEl)return;
+  var r=tipEl.getBoundingClientRect(),t=TIP.getBoundingClientRect();
+  var x=r.left+2,y=r.bottom+6;
+  if(y+t.height>window.innerHeight-30)y=r.top-t.height-6;
+  if(x+t.width>window.innerWidth-6)x=window.innerWidth-t.width-6;
+  TIP.style.left=Math.round(Math.max(4,x))+'px';
+  TIP.style.top=Math.round(Math.max(4,y))+'px';
+}
+function tipShow(el){
+  if(!TIP)return;
+  var title=el.getAttribute('data-tip');
+  if(!title)return;
+  var key=el.getAttribute('data-tip-key'),desc=el.getAttribute('data-tip-desc');
+  TIP.innerHTML='<span class="tt-title">'+title+'</span>'+
+    (key?'<span class="tt-key">('+key+')</span>':'')+
+    (desc?'<span class="tt-desc">'+desc+'</span>':'');
+  tipEl=el;
+  TIP.classList.add('show');
+  placeTip();
+}
+function tipHide(){
+  clearTimeout(tipTimer);
+  tipEl=null;
+  if(TIP)TIP.classList.remove('show');
+}
+document.addEventListener('mouseover',function(e){
+  var el=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(!el){tipHide();return}
+  if(el===tipEl)return;
+  tipHide();
+  tipTimer=setTimeout(function(){tipShow(el)},420);
+});
+document.addEventListener('mousemove',function(){
+  if(tipEl&&TIP&&TIP.classList.contains('show'))placeTip();
+});
+document.addEventListener('mouseout',function(e){
+  var el=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(el)tipHide();
+});
+document.addEventListener('mousedown',function(){tipHide()},true);
+window.addEventListener('resize',function(){tipHide()});
+
+/* ======================================================================
+   2. Данные меню: компактный DSL + меню верхней панели (часть 1)
+   Форма записи:  ['Label','Ctrl+N','i-icon',{chk:true}] | '-' (разделитель)
+                  ['Label',{sub:[ ... ]}]  |  ['Label',{dis:true}]
+   ====================================================================== */
+var MENUS={};
+function L(rows){
+  return rows.map(function(r){
+    if(r==='-'||r==='|')return {sep:1};
+    var it={label:r[0]},k=r[1],i=r[2],o=r[3];
+    if(typeof k==='string')it.key=k;
+    else if(k&&typeof k==='object')o=k;
+    if(typeof i==='string')it.icon=i;
+    else if(i&&typeof i==='object')o=i;
+    if(o)for(var x in o){if(x==='dis')it.disabled=1;else it[x]=o[x]}
+    if(it.sub)it.sub=L(it.sub);
+    return it;
+  });
+}
+function MENU(name,rows){MENUS[name]=L(rows)}
+
+MENU('app',[
+  ['New File','Shift+Ctrl+N','i-file'],
+  ['Open…','Ctrl+O','i-folder'],
+  '-',
+  ['Preferences…',null,'i-settings'],
+  ['Install Application Template…',null,'i-folder'],
+  ['Publish Application Template…',null,'i-file'],
+  '-',
+  ['About Blender…',null,'i-logo'],
+  ['Blender Website',null,'i-globe'],
+  ['Extensions',{sub:[['Get Extensions'],['Repositories'],'-',['Sync Online Extensions']]},'i-plus'],
+  '-',
+  ['Quit','Ctrl+Q']
+]);
+
+MENU('file',[
+  ['New','Ctrl+N','i-file'],
+  ['New Window',null,'i-view3d'],
+  ['Open…','Ctrl+O','i-folder'],
+  ['Open Recent',{sub:[['Cube.blend'],['Scene.blend'],['Splash.blend'],'-',['Clear Recent Files',{dis:true}]]}],
+  ['Revert',{dis:true}],
+  '-',
+  ['Save','Ctrl+S','i-file'],
+  ['Save As…','Shift+Ctrl+S'],
+  ['Save Copy…'],
+  ['Save Incremental','Ctrl+Alt+S'],
+  '-',
+  ['Link…','Ctrl+Alt+L','i-node'],
+  ['Append…','Shift+F1','i-node'],
+  '-',
+  ['Import',{sub:[['Wavefront (.obj)'],['FBX (.fbx)'],['glTF 2.0 (.glb/.gltf)'],['Collada (.dae)'],['Alembic (.abc)'],['STL (.stl)'],'-',['Other…']]},'i-node'],
+  ['Export',{sub:[['Wavefront (.obj)'],['FBX (.fbx)'],['glTF 2.0 (.glb/.gltf)'],['Collada (.dae)'],['Alembic (.abc)'],['STL (.stl)'],'-',['Other…']]},'i-node'],
+  '-',
+  ['External Data',{sub:[['Automatically Pack Resources',{chk:true}],['Pack Resources'],['Unpack Resources'],'-',['Pack Linked Libraries'],['Unpack Linked Libraries']]}],
+  ['Clean Up',{sub:[['Unused Data-Blocks'],['Recursive Unused Data-Blocks'],['Unused Linked Data-Blocks'],['Unused Images']]}],
+  '-',
+  ['Quit','Ctrl+Q']
+]);
+
+MENU('edit',[
+  ['Undo','Ctrl+Z','i-undo'],
+  ['Redo','Shift+Ctrl+Z','i-redo'],
+  ['Undo History…'],
+  '-',
+  ['Cut','Ctrl+X'],
+  ['Copy','Ctrl+C','i-copy'],
+  ['Paste','Ctrl+V','i-paste'],
+  ['Paste (XYZW)'],
+  '-',
+  ['Delete','Del'],
+  ['Duplicate','Shift+D'],
+  ['Duplicate Linked','Alt+D'],
+  '-',
+  ['Select All','A'],
+  ['Select None','Alt+A'],
+  ['Select Invert','Ctrl+I'],
+  ['Select Box','B','i-selectbox'],
+  '-',
+  ['Lock Object Modes',{chk:true,key:'Alt+Tab'}],
+  '-',
+  ['Preferences…',null,'i-settings']
+]);
+
+MENU('render',[
+  ['Render Image','F12','i-camera'],
+  ['Render Animation','Ctrl+F12'],
+  ['Render Audio','Ctrl+F5','i-speaker'],
+  ['Render Still Animation'],
+  '-',
+  ['View Render','F11','i-eye'],
+  ['View Animation','Ctrl+F11'],
+  '-',
+  ['Lock Interface',{chk:false}],
+  ['Preview Denoise',{chk:true}],
+  '-',
+  ['Open Movie Editor','Ctrl+Alt+E'],
+  ['Play Rendered Animation','Ctrl+F11']
+]);
+
+MENU('window',[
+  ['New Window','Ctrl+Alt+W'],
+  ['Toggle Window Fullscreen'],
+  ['Toggle Quad View','Ctrl+Alt+Q','i-view3d'],
+  '-',
+  ['Next Workspace','Ctrl+PageUp'],
+  ['Previous Workspace','Ctrl+PageDown'],
+  '-',
+  ['Show Status Bar',{chk:true}],
+  ['Wrap Popovers',{chk:true}],
+  ['Add Workspace',null,'i-plus'],
+  '-',
+  ['Save Screenshot'],
+  ['Save Screenshot (Editor)'],
+  ['Save Screenshot (Full Area)']
+]);
+
+MENU('help',[
+  ['Manual','F1'],
+  ['Tutorials'],
+  ['Support'],
+  '-',
+  ['Blender Website',null,'i-globe'],
+  ['Blender Store'],
+  ['Developer Documentation'],
+  ['Python API Reference',null,'i-python'],
+  '-',
+  ['Report a Bug'],
+  ['Blender Benchmark'],
+  '-',
+  ['About Blender',null,'i-logo']
+]);
+
+/* ======================================================================
+   3. Данные меню (часть 2): topbar-поля, тип редактора, режимы, шапки
+   ====================================================================== */
+MENU('template',[
+  ['Layout',{chk:true}],
+  ['Modeling'],
+  ['Sculpting'],
+  ['2D Animation'],
+  ['VFX'],
+  ['Video Editing'],
+  '-',
+  ['Install Application Template…',null,'i-folder'],
+  ['About Application Templates…',null,'i-file']
+]);
+
+MENU('addWorkspace',$$('#workspaces .bl-ws').map(function(w){
+  return [w.textContent.trim(),{chk:has(w,'active')}];
+}).concat([['-'],['Add Workspace…',null,'i-plus']]));
+
+MENU('scene',[
+  ['Scene',{chk:true,icon:'i-scene'}],
+  ['Scene.001',{icon:'i-scene'}],
+  '-',
+  ['New Scene',null,'i-plus'],
+  ['Duplicate Scene',null,'i-copy'],
+  ['Delete Scene',{dis:true}],
+  '-',
+  ['View Layer',{sub:[['ViewLayer',{chk:true}],['ViewLayer.001'],'-',['New View Layer'],['Duplicate View Layer']]},'i-layers'],
+  ['World',{sub:[['World',{chk:true}],['New World']]},'i-globe'],
+  ['Collection',{sub:[['Collection',{chk:true}],['New Collection']]},'i-collection']
+]);
+
+MENU('viewlayer',[
+  ['ViewLayer',{chk:true,icon:'i-layers'}],
+  '-',
+  ['New View Layer',null,'i-plus'],
+  ['Duplicate View Layer',null,'i-copy'],
+  ['Delete View Layer',null,'i-x'],
+  '-',
+  ['Set Active View Layer'],
+  ['Rename View Layer']
+]);
+
+MENU('editorType',[
+  ['General',{sub:[['3D Viewport',{chk:true,icon:'i-view3d'}],['Image Editor'],['UV Editor'],['Compositor',null,'i-node'],['Texture Node Editor',null,'i-node'],['Geometry Node Editor',null,'i-node'],['Shader Editor',null,'i-node'],['Video Sequencer'],['Movie Clip Editor']]},'i-view3d'],
+  ['Animation',{sub:[['Dope Sheet'],['Graph Editor'],['Drivers'],['Nonlinear Animation'],['Timeline',{chk:true,icon:'i-timeline'}]]},'i-timeline'],
+  ['Data',{sub:[['Outliner',{chk:true,icon:'i-outliner'}],['Properties',{chk:true,icon:'i-settings'}],['File Browser'],['Asset Browser'],['Spreadsheet'],['Preferences',null,'i-settings']]},'i-outliner'],
+  '-',
+  ['Show Header',{chk:true}],
+  ['Render Preview',{chk:false}]
+]);
+
+MENU('mode',[
+  ['Object Mode',{chk:true,icon:'i-object'}],
+  ['Edit Mode','Tab','i-mesh'],
+  '-',
+  ['Pose Mode','Ctrl+Tab'],
+  ['Sculpt Mode','Ctrl+Tab'],
+  ['Vertex Paint'],
+  ['Weight Paint'],
+  ['Texture Paint'],
+  '-',
+  ['Grease Pencil',{sub:[['Draw',null,'i-text'],['Edit'],['Sculpt']]}]
+]);
+
+MENU('headerOptions',[
+  ['Toggle Maximize Area','Ctrl+Space'],
+  ['Toggle Fullscreen Area','Ctrl+Alt+Space'],
+  '-',
+  ['Close Area'],
+  ['Split Area Vertically'],
+  ['Split Area Horizontally'],
+  ['Join Areas'],
+  '-',
+  ['Show Header',{chk:true}],
+  ['Show Tool Settings',{chk:false}]
+]);
+
+MENU('playback',[
+  ['Synchronize',{sub:[['Frame Dropping',{chk:true}],['Sync to Audio',{chk:true}],['Play Every Frame']]}],
+  ['Audio',{sub:[['Mute Audio',{chk:false}],['Scrubbing',{chk:true}],['Scrub Audio',{chk:false}],['Play Audio on Speed Change',{chk:true}]]},'i-speaker'],
+  '-',
+  ['Frame Rate','24 fps'],
+  ['Limit Playback to Scene',{chk:true}],
+  '-',
+  ['Use Preview Range',{chk:false}],
+  ['Cache Animation',{chk:true}]
+]);
+
+MENU('timelineContext',[
+  ['Jump to Start','Shift+Left','i-skip-start'],
+  ['Jump to Previous Keyframe','Up','i-step-back'],
+  ['Play / Pause Animation','Spacebar','i-play'],
+  ['Jump to Next Keyframe','Down','i-step-fwd'],
+  ['Jump to End','Shift+Right','i-skip-end'],
+  '-',
+  ['Set Start Frame','Shift+Left'],
+  ['Set End Frame','Shift+Right'],
+  '-',
+  ['Auto Keying',{chk:false,icon:'i-record'}],
+  ['Insert Keyframe','I'],
+  ['Delete Keyframes','Del'],
+  '-',
+  ['Frame All','Home'],
+  ['Frame Preview Range']
+]);
+
+MENU('viewportContext',[
+  ['Add',{sub:[['Mesh'],['Curve'],['Empty'],['Light'],['Camera']]},'i-addcube'],
+  ['Mode',{sub:[['Object Mode',{chk:true}],['Edit Mode']]},'i-object'],
+  '-',
+  ['Select All','A'],
+  ['Deselect All','Alt+A'],
+  ['Invert Selection','Ctrl+I'],
+  '-',
+  ['Duplicate','Shift+D','i-copy'],
+  ['Delete','Del','i-x'],
+  '-',
+  ['Shade Auto Smooth'],
+  ['Shade Smooth'],
+  ['Shade Flat'],
+  '-',
+  ['Set Origin',{sub:[['Geometry to Origin'],['Origin to Geometry'],['Origin to 3D Cursor'],'-',['Origin to Center of Mass']]},'i-pivot'],
+  ['Rename','F2'],
+  ['Apply',{sub:[['Location'],['Rotation'],['Scale'],['All Transforms']]}]
+]);
+
+/* ======================================================================
+   4. Данные меню (часть 3): меню 3D-вьюпорта (View / Select / Add / Object)
+   ====================================================================== */
+MENU('view3dView',[
+  ['Frame All','Home'],
+  ['Frame Selected','Numpad .'],
+  ['Frame Region','Shift+B'],
+  '-',
+  ['Viewpoint',{sub:[['Camera','Numpad 0'],['Left','Ctrl+Numpad 3'],['Right','Numpad 3'],['Front','Numpad 1'],['Back','Ctrl+Numpad 1'],['Top','Numpad 7'],['Bottom','Ctrl+Numpad 7'],'-',['Toggle Perspective','Numpad 5']]},'i-proj'],
+  ['Navigation',{sub:[['Orbit Left','Numpad 4'],['Orbit Right','Numpad 6'],['Orbit Up','Numpad 8'],['Orbit Down','Numpad 2'],'-',['Pan','Shift+MMB'],['Zoom','MMB'],'-',['Fly Navigation'],['Walk Navigation']]},'i-hand'],
+  ['Align View',{sub:[['Align View to Selected'],['Center Cursor and View All'],['Align Camera to View'],'-',['Focus Camera to View']]}],
+  '-',
+  ['Camera',{sub:[['Active Camera','Numpad 0'],['Camera to View','Ctrl+Alt+Numpad 0'],['Lock Camera to View',{chk:true}]]},'i-camobj'],
+  '-',
+  ['Toggle Quad View','Ctrl+Alt+Q'],
+  ['Area',{sub:[['Toggle Maximize Area','Ctrl+Space'],['Toggle Fullscreen Area','Ctrl+Alt+Space']]}],
+  '-',
+  ['Play Animation','Spacebar','i-play']
+]);
+
+MENU('view3dSelect',[
+  ['All','A'],
+  ['None','Alt+A'],
+  ['Invert','Ctrl+I'],
+  ['Box Select','B','i-selectbox'],
+  ['Circle Select','C'],
+  ['Lasso Select','Ctrl+Right'],
+  '-',
+  ['Select Random'],
+  ['Select by Trait',{sub:[
+    ['Select Mirror','Shift+Ctrl+M'],
+    ['Select Side of Active'],
+    ['Select All by Trait',{sub:[
+      ['Non Manifold','Shift+Ctrl+Alt+M'],
+      ['Loose Geometry'],
+      ['Interior Faces']
+    ]}]
+  ]},'i-filter'],
+  '-',
+  ['Select Pattern…','Shift+G'],
+  '-',
+  ['Select Camera']
+]);
+
+MENU('view3dAdd',[
+  ['Mesh',{sub:[['Plane'],['Cube'],['Circle','Shift+A'],['UV Sphere'],['Icosahedron'],['Cylinder'],['Cone'],['Torus'],['Grid'],['Monkey']]},'i-mesh'],
+  ['Curve',{sub:[['Bezier'],['Circle'],['Path'],['Poly'],['NURBS Curve'],['NURBS Circle']]}],
+  ['Surface',{sub:[['NURBS Curve'],['NURBS Circle'],['Plane']]}],
+  ['Metaball',{sub:[['Ball'],['Capsule'],['Plane'],['Cube'],['Ellipsoid']]}],
+  ['Text',{dis:true},'i-text'],
+  ['Volume',{sub:[['Import OpenVDB…'],['Empty']]}],
+  ['Grease Pencil',{sub:[['Blank'],['Stroke'],['Monkey'],'-',['Scene Line Art'],['Collection Line Art']]}],
+  '-',
+  ['Armature','Shift+A'],
+  ['Lattice'],
+  ['Empty',{sub:[['Plain Axes'],['Arrows'],['Single Arrow'],['Cube'],['Sphere'],['Cone'],['Image'],['Torus']]}],
+  '-',
+  ['Image',{sub:[['Reference'],['Background'],['Mesh Plane']]}],
+  ['Light',{sub:[['Point','Shift+A'],['Sun'],['Spot'],['Area']]},'i-light'],
+  ['Camera',null,'i-camobj'],
+  '-',
+  ['Speaker',null,'i-speaker'],
+  ['Force Field',{sub:[['Force'],['Wind'],['Vortex'],['Magnetic'],['Harmonic'],['Charge'],['Lennard-Jones'],['Texture']]}],
+  '-',
+  ['Collection Instance',{sub:[['Collection'],['Collection.001']]},'i-collection']
+]);
+
+MENU('view3dObject',[
+  ['Transform',{sub:[['Move','G'],['Rotate','R'],['Scale','S'],'-',['Align Objects'],['Randomize Transform'],['Mirror','Ctrl+M'],['Clear',{sub:[['Location','Alt+G'],['Rotation','Alt+R'],['Scale','Alt+S'],['All','Alt+G / R / S']]}]]},'i-transform'],
+  ['Set Origin',{sub:[['Geometry to Origin'],['Origin to Geometry'],['Origin to 3D Cursor'],['Origin to Center of Mass']]},'i-pivot'],
+  ['Apply',{sub:[['Location','Ctrl+A'],['Rotation','Ctrl+A'],['Scale','Ctrl+A'],['All Transforms','Ctrl+A']]}],
+  '-',
+  ['Convert To',{sub:[['Mesh','Ctrl+A'],['Curve'],['Grease Pencil']]}],
+  '-',
+  ['Duplicate','Shift+D','i-copy'],
+  ['Duplicate Linked','Alt+D'],
+  ['Join','Ctrl+J'],
+  ['Split',{sub:[['Selection','Y'],['Faces by Edges','Y']]}],
+  ['Delete','X','i-x'],
+  '-',
+  ['Shade Auto Smooth','Shift+Ctrl+Click'],
+  ['Shade Smooth','Shift+Click'],
+  ['Shade Flat'],
+  ['Link/Transfer',{sub:[['Link Object Data','Ctrl+L'],['Transfer Mesh Data','Ctrl+L'],['Copy Material to Selected']]}],
+  '-',
+  ['Rename','F2'],
+  ['Add Object Constraint','Shift+Ctrl+C','i-constraint'],
+  ['Parent',{sub:[['Object','Ctrl+P'],['Clear Parent','Alt+P'],['Clear and Keep Transformation','Alt+P']]},'i-constraint']
+]);
+
+/* ======================================================================
+   5. Данные меню (часть 4): ориентация, привязки, гизмо, оверлеи
+   ====================================================================== */
+MENU('orientation',[
+  ['Global','Comma',{chk:true,icon:'i-proj'}],
+  ['Local'],
+  ['Normal'],
+  ['Gimbal'],
+  ['View'],
+  ['Cursor'],
+  '-',
+  ['Parent'],
+  '-',
+  ['Create Orientation…']
+]);
+
+MENU('pivot',[
+  ['Median Point','Period',{chk:true,icon:'i-pivot'}],
+  ['Individual Origins'],
+  ['3D Cursor'],
+  ['Bounding Box Center'],
+  '-',
+  ['Active Element'],
+  ['Median Point of Selection']
+]);
+
+MENU('snapping',[
+  ['Snap To',{sub:[['Increment'],['Grid',{chk:true}],['Vertex'],['Edge'],['Face'],['Volume'],['Edge Center'],['Edge Perpendicular']]},'i-magnet'],
+  ['Snap With',{sub:[['Closest'],['Center',{chk:true}],['Median'],['Active']]}],
+  ['Affect',{sub:[['Move',{chk:true}],['Rotate',{chk:true}],['Scale',{chk:true}]]},'i-transform'],
+  '-',
+  ['Absolute Grid Snap',{chk:false}],
+  ['Backface Culling',{chk:true}],
+  '-',
+  ['Align Rotation to Target',{chk:false}],
+  ['Project Individual Elements',{chk:false}]
+]);
+
+MENU('proportional',[
+  ['Proportional Editing','O',{chk:true,icon:'i-proportional'}],
+  '-',
+  ['Falloff',{sub:[['Smooth'],['Sphere'],['Root'],['Inverse Square'],['Sharp'],['Linear'],['Constant'],['Random']]}],
+  ['Connected Only','Alt+O',{chk:false}],
+  ['Projected from View',{chk:false}],
+  ['Editing in Screen Space',{chk:false}]
+]);
+
+MENU('objTypeVis',[
+  ['Emitter',{chk:true}],
+  ['Camera',{chk:true}],
+  ['Speaker',{chk:true}],
+  ['Curve',{chk:true}],
+  ['Surface',{chk:true}],
+  ['Metaball',{chk:true}],
+  ['Font',{chk:true}],
+  ['Volume',{chk:true}],
+  ['Grease Pencil',{chk:true}],
+  ['Armature',{chk:true}],
+  ['Lattice',{chk:true}],
+  ['Empty',{chk:true}],
+  ['Light',{chk:true}],
+  ['Light Probe',{chk:true}],
+  ['Mesh',{chk:true}],
+  '-',
+  ['Select All'],
+  ['Deselect All'],
+  ['Invert']
+]);
+
+MENU('gizmos',[
+  ['Gizmos',{chk:true,icon:'i-gizmo'}],
+  ['Navigate',{chk:true}],
+  ['Tools',{chk:true}],
+  ['Object Gizmos',{chk:true}],
+  '-',
+  ['Size','75 px'],
+  ['Empty Object Size','1.00 m'],
+  '-',
+  ['Move',{chk:true}],
+  ['Rotate',{chk:true}],
+  ['Scale',{chk:true}],
+  ['Transform',{chk:false}],
+  ['Camera',{chk:true}],
+  ['Light',{chk:true}],
+  ['Empty Object',{chk:true}],
+  '-',
+  ['Linear Tint',{chk:true}]
+]);
+
+MENU('overlays',[
+  ['Show Overlays','Shift+Alt+Z',{chk:true,icon:'i-overlays'}],
+  '-',
+  ['Grid',{chk:true}],
+  ['Floor',{chk:true}],
+  ['Axes',{chk:true}],
+  ['Wireframe',{chk:false}],
+  ['Outline',{chk:true}],
+  ['Origins',{chk:true}],
+  ['Origins (All)',{chk:false}],
+  ['Relationship Lines',{chk:false}],
+  '-',
+  ['Cursor',{chk:true}],
+  ['Statistics',{chk:true}],
+  ['Text Info',{chk:true}],
+  '-',
+  ['Object Name',{chk:false}],
+  ['Object Type',{chk:false}],
+  ['Extras',{chk:true}],
+  '-',
+  ['Gizmo',{chk:true}],
+  ['Center of Mass',{chk:false}]
+]);
+
+/* ======================================================================
+   6. Данные меню (часть 5): X-Ray, нав-гизмо, инструменты тулбара
+   ====================================================================== */
+MENU('xray',[
+  ['X-Ray','Alt+Z',{chk:false,icon:'i-xray'}],
+  ['Alpha','0.500'],
+  '-',
+  ['Wireframe',{chk:false}],
+  ['Show Transparent Objects',{chk:true}],
+  ['Fade Inactive Geometry',{chk:false}]
+]);
+
+MENU('projPersp',[
+  ['Camera','Numpad 0','i-camobj'],
+  ['Perspective / Orthographic','Numpad 5','i-proj'],
+  '-',
+  ['View Axis',{sub:[['Left','Ctrl+Numpad 3'],['Right','Numpad 3'],['Front','Numpad 1'],['Back','Ctrl+Numpad 1'],['Top','Numpad 7'],['Bottom','Ctrl+Numpad 7']]}],
+  ['Reset View','Numpad 5']
+]);
+
+MENU('navZoom',[
+  ['Zoom In','Ctrl+MMB'],
+  ['Zoom Out','Ctrl+MMB'],
+  '-',
+  ['Frame All','Home'],
+  ['Frame Selected','Numpad .'],
+  ['Zoom Region','Shift+B'],
+  '-',
+  ['Zoom to Mouse Position',{chk:true}]
+]);
+
+MENU('navPan',[
+  ['Pan View','Shift+MMB'],
+  '-',
+  ['Lock Camera to View',{chk:true}],
+  ['Auto-Depth View'],
+  ['Center Cursor and View All','Shift+C']
+]);
+
+MENU('navCam',[
+  ['Active Camera','Numpad 0','i-camobj'],
+  ['Camera to View','Ctrl+Alt+Numpad 0'],
+  '-',
+  ['Set Active Object as Camera','Ctrl+Numpad 0'],
+  ['Align Camera to View'],
+  '-',
+  ['Lock Camera to View',{chk:true}],
+  ['Local Camera',{sub:[['Camera',{chk:true}],['None']]}]
+]);
+
+MENU('cursorTool',[
+  ['Cursor',{chk:true,icon:'i-cursor3d'}],
+  ['Cursor Rotate',{chk:false}],
+  ['Cursor Scale',{chk:false}],
+  '-',
+  ['Snap Cursor',{sub:[['To World Origin','Shift+C'],['To Selected','Shift+S'],['To Active'],['To Grid']]}]
+]);
+
+MENU('moveTool',[
+  ['Move','G',{chk:true,icon:'i-move'}],
+  ['Move Origin Only',{chk:false}],
+  '-',
+  ['Orientation',{sub:[['Global'],['Local'],['Normal'],['View'],['Cursor']]},'i-proj'],
+  ['Snapping',{chk:false,icon:'i-magnet'}]
+]);
+
+MENU('rotateTool',[
+  ['Rotate','R',{chk:true,icon:'i-rotate'}],
+  '-',
+  ['Orientation',{sub:[['Global'],['Local'],['Normal'],['View'],['Cursor']]},'i-proj'],
+  ['Snapping',{chk:false,icon:'i-magnet'}]
+]);
+
+MENU('scaleTool',[
+  ['Scale','S',{chk:true,icon:'i-scale'}],
+  ['Scale Cage',{chk:false}],
+  '-',
+  ['Orientation',{sub:[['Global'],['Local'],['Normal'],['View'],['Cursor']]},'i-proj'],
+  ['Snapping',{chk:false,icon:'i-magnet'}]
+]);
+
+MENU('transformTool',[
+  ['Transform',{chk:true,icon:'i-transform'}],
+  ['Gizmo Position',{sub:[['Origin'],['Center of Mass'],['Bounding Box']]}],
+  ['Orientation',{sub:[['Global'],['Local'],['Normal'],['View']]},'i-proj'],
+  ['Snapping',{chk:true,icon:'i-magnet'}]
+]);
+
+MENU('annotateTool',[
+  ['Annotate',{chk:true,icon:'i-annotate'}],
+  ['Annotate Line'],
+  ['Annotate Polygon'],
+  ['Annotate Eraser'],
+  '-',
+  ['Color',{sub:[['Black'],['White'],['Red'],['Green'],['Blue'],['Custom…']]}],
+  ['Annotation Layer',null,'i-layers']
+]);
+
+MENU('measureTool',[
+  ['Measure',{chk:true,icon:'i-measure'}],
+  '-',
+  ['Measure Snap',{chk:true}],
+  ['Show Ruler',{chk:true}],
+  ['Clear Measurements']
+]);
+
+MENU('addCubeTool',[
+  ['Add Cube','Shift+A',{icon:'i-addcube'}],
+  '-',
+  ['Interaction',{sub:[['Extrude to Cursor'],['Plane',{chk:true}],['Equal Sides',{chk:false}]]}],
+  ['Align',{sub:[['World'],['View']]}],
+  ['Snap to','Increment']
+]);
+
+/* ======================================================================
+   7. Данные меню (часть 6): Outliner, Properties, панельные меню + действия
+   ====================================================================== */
+MENU('outlinerDisplayMode',[
+  ['Scenes',{chk:false}],
+  ['View Layer',{chk:true,icon:'i-layers'}],
+  ['Video Sequencer'],
+  ['Blender File',null,'i-file'],
+  ['Data API',null,'i-node'],
+  ['Orphan Data'],
+  '-',
+  ['Library Overrides']
+]);
+
+MENU('outlinerFilter',[
+  ['Filter',{chk:true,icon:'i-filter'}],
+  ['Restriction Toggles',{chk:true}],
+  '-',
+  ['Collections',{chk:true}],
+  ['Objects',{chk:true}],
+  ['Object Children',{chk:false}],
+  ['Meshes',{chk:true}],
+  ['Curves',{chk:true}],
+  ['Fonts',{chk:true}],
+  ['Light Probes',{chk:true}],
+  '-',
+  ['Show Active',{chk:true}],
+  ['Sort Alphabetically',{chk:false}],
+  ['Sync Selection',{chk:true}],
+  ['Exclude Filter',{chk:false}]
+]);
+
+MENU('engineList',[
+  ['EEVEE Next',{chk:true,icon:'i-shading'}],
+  ['Cycles',{chk:false}],
+  ['Workbench',{chk:false}],
+  '-',
+  ['Remove Render Engine']
+]);
+
+MENU('renderPresets',[
+  ['Presets',{sub:[['Fast Preview'],['Default'],['High Quality'],'-',['Save Preset…']]}]
+]);
+
+MENU('matBlock',[
+  ['Material',{chk:true,icon:'i-material'}],
+  ['Material.001',{icon:'i-material'}],
+  '-',
+  ['New Material',null,'i-plus'],
+  ['Duplicate Material',null,'i-copy'],
+  ['Unlink Material',null,'i-x'],
+  '-',
+  ['Remove Material'],
+  ['Copy Material to Selected']
+]);
+
+MENU('vlMaterial',[
+  ['All Materials',{chk:true}],
+  ['Material',{icon:'i-material'}],
+  ['Material.001',{icon:'i-material'}],
+  '-',
+  ['New Material',null,'i-plus']
+]);
+
+MENU('objPresets',[
+  ['Presets',{sub:[['Default'],['PNG (RGBA)'],['JPEG (High Quality)'],['OpenEXR (Multilayer)'],'-',['Save Preset…']]}]
+]);
+
+MENU('modSettings',[
+  ['Apply','Ctrl+A','i-check'],
+  ['Apply as Shape Key'],
+  ['Duplicate',null,'i-copy'],
+  ['Copy to Selected'],
+  '-',
+  ['Move to First'],
+  ['Move to Last'],
+  '-',
+  ['Delete',null,'i-x']
+]);
+
+MENU('rbSettings',[
+  ['Copy Rigid Body Settings',null,'i-copy'],
+  ['Paste Rigid Body Settings',null,'i-paste'],
+  '-',
+  ['Remove Rigid Body',null,'i-x'],
+  ['Bake to Keyframes'],
+  '-',
+  ['Calculate to Frame'],
+  ['Clear All']
+]);
+
+MENU('gravityPresets',[
+  ['Earth','1.00 m/s²',{chk:true,icon:'i-globe'}],
+  ['Moon','0.17 m/s²'],
+  ['Mars','0.38 m/s²'],
+  ['Space','0.00 m/s²'],
+  '-',
+  ['Custom Gravity']
+]);
+
+MENU('psSettings',[
+  ['Copy Particle Settings',null,'i-copy'],
+  ['Rename'],
+  ['Convert to Mesh'],
+  '-',
+  ['Remove Particle System',null,'i-x']
+]);
+
+MENU('conSettings',[
+  ['Apply',null,'i-check'],
+  ['Copy Constraint',null,'i-copy'],
+  ['Paste Constraint',null,'i-paste'],
+  '-',
+  ['Disable Constraint'],
+  ['Clear Constraint'],
+  '-',
+  ['Delete',null,'i-x']
+]);
+
+MENU('addModifier',[
+  ['Modify',{sub:[['Data Transfer'],['Mesh Cache'],['Mesh Sequence Cache'],['Normal Edit'],['Weighted Normal'],['UV Project'],['UV Warp'],'-',['Vertex Weight Edit'],['Vertex Weight Mix'],['Vertex Weight Proximity']]}],
+  ['Generate',{sub:[['Array'],['Bevel'],['Booleans'],['Build'],['Decimate'],['Edge Split'],['Mask'],['Mirror'],['Multiresolution'],['Remesh'],['Screw'],['Skin'],['Solidify'],['Subdivision Surface'],['Triangulate'],['Weld'],['Wireframe']]}],
+  ['Deform',{sub:[['Armature'],['Cast'],['Curve'],['Displace'],['Hook'],['Laplacian Smooth'],['Lattice'],['Shrinkwrap'],['Simple Deform'],['Smooth'],['Warp'],['Wave']]}],
+  ['Physics',{sub:[['Cloth'],['Collision'],['Dynamic Paint'],['Explode'],['Fluid'],['Ocean'],['Particle Instance'],['Soft Body']]}],
+  ['Normals',{sub:[['Auto Smooth'],['Smooth by Angle'],['Weighted Normal'],['Weighted Normal Edit']]}]
+]);
+
+MENU('addParticleSystem',[
+  ['Particle System',null,'i-particles'],
+  '-',
+  ['Hair'],
+  ['Emitter'],
+  '-',
+  ['Remove Particle System',null,'i-x']
+]);
+
+MENU('addPhysics',[
+  ['Force Field',{chk:true,icon:'i-physics'}],
+  '-',
+  ['Collision'],
+  ['Rigid Body'],
+  ['Rigid Body Constraint'],
+  ['Soft Body'],
+  ['Cloth'],
+  ['Fluid'],
+  ['Ocean'],
+  ['Dynamic Paint'],
+  '-',
+  ['Remove Physics',null,'i-x']
+]);
+
+MENU('addConstraint',[
+  ['Transform',{sub:[['Copy Location'],['Copy Rotation'],['Copy Scale'],['Copy Transforms'],['Limit Distance'],['Limit Location'],['Limit Rotation'],['Limit Scale'],['Maintain Volume'],['Transform']]},'i-constraint'],
+  ['Tracking',{sub:[['Clamp To'],['Damped Track'],['IK Solver'],['Inverse Kinematics'],['Locked Track'],['Spline IK'],['Stretch To'],['Track To']]},'i-constraint'],
+  ['Relationship',{sub:[['Action'],['Armature'],['Child Of'],['Floor'],['Follow Path'],['Pivot'],['Shrinkwrap']]},'i-constraint'],
+  '-',
+  ['Remove Constraint',null,'i-x']
+]);
+
+/* ---- меню-«действия»: не открывают попап, а сразу что-то делают ---- */
+var MENU_ACTIONS={
+  outlinerSearch:function(){
+    var f=$('#outlinerSearchField');
+    if(!f)return;
+    toggle(f,'bl-hidden');
+    if(!has(f,'bl-hidden')){
+      var inp=$('#outlinerSearchInput');
+      if(inp)inp.focus();
+      setHint('Поиск по Outliner: начните вводить имя');
+    }
+  },
+  outlinerNewCollection:function(){setHint('<b>New Collection</b> — коллекция создана (демонстрация)')},
+  addSidebarTab:function(){setHint('<b>Add Tab</b> — вкладка сайдбара (демонстрация)')}
+};
+
+/* ======================================================================
+   8. Движок меню: открытие, подменю, переключение по наведению
+   ====================================================================== */
+var MENULAYER=document.getElementById('menuLayer');
+var menuTrig=null,openMenus=[];   /* [ {el:DOM, level:int} ] */
+
+function placeMenu(el,x,y){
+  el.style.left='0px';el.style.top='0px';
+  var r=el.getBoundingClientRect();
+  if(x+r.width>window.innerWidth-4)x=window.innerWidth-r.width-4;
+  if(y+r.height>window.innerHeight-4)y=window.innerHeight-r.height-4;
+  el.style.left=Math.round(Math.max(4,x))+'px';
+  el.style.top=Math.round(Math.max(4,y))+'px';
+}
+function closeFromLevel(level){
+  openMenus=openMenus.filter(function(m){
+    if(m.level<=level)return true;
+    if(m.el.parentNode)m.el.parentNode.removeChild(m.el);
+    return false;
+  });
+}
+function closeMenus(){
+  openMenus.forEach(function(m){if(m.el.parentNode)m.el.parentNode.removeChild(m.el)});
+  openMenus=[];
+  if(menuTrig){menuTrig.classList.remove('open');menuTrig=null}
+}
+function buildLevel(items,level){
+  var box=document.createElement('div');
+  box.className='bl-menu';
+  box.setAttribute('data-level',level);
+  items.forEach(function(it){
+    if(it.sep){
+      var s=document.createElement('div');
+      s.className='bl-menu-sep';
+      box.appendChild(s);
+      return;
+    }
+    var row=document.createElement('div');
+    row.className='bl-menu-item'+(it.disabled?' disabled':'');
+    row.innerHTML=(it.chk!==undefined?'<span class="chk">'+(it.chk?svgc('i-check','ic-12'):'')+'</span>':'')+
+      (it.icon?'<span class="mi-icon">'+svgc(it.icon,'ic-14')+'</span>':'')+
+      '<span class="mi-label">'+it.label+'</span>'+
+      (it.key?'<span class="mi-key">'+it.key+'</span>':'')+
+      (it.sub?'<span class="mi-sub">'+svgc('i-chev-right','ic-12')+'</span>':'');
+    row.addEventListener('mouseenter',function(){
+      if(it.sub)openSubmenu(row,it,level);else closeFromLevel(level);
+    });
+    row.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      if(it.sub){openSubmenu(row,it,level);return}
+      if(it.disabled){setHint('<b>'+it.label+'</b> — недоступно в этом контексте');return}
+      if(it.chk!==undefined){
+        it.chk=!it.chk;
+        closeMenus();
+        setHint('<b>'+it.label+'</b>: '+(it.chk?'включено':'выключено'));
+        return;
+      }
+      closeMenus();
+      setHint('<b>'+it.label+'</b>'+(it.key?' <b>('+it.key+')</b>':'')+' — команда-заглушка');
+    });
+    box.appendChild(row);
+  });
+  MENULAYER.appendChild(box);
+  openMenus.push({el:box,level:level});
+  return box;
+}
+function openSubmenu(row,it,level){
+  closeFromLevel(level);
+  var box=buildLevel(it.sub,level+1);
+  var r=row.getBoundingClientRect();
+  placeMenu(box,r.right-3,r.top-5);
+  row.classList.add('open');
+}
+function isContextTrigger(el){return el&&(el.id==='areaCanvas'||el.id==='timelineBody')}
+function openMenu(trigger){
+  var name=trigger.getAttribute('data-menu');
+  if(!name)return;
+  if(MENU_ACTIONS[name]){closeMenus();MENU_ACTIONS[name](trigger);return}
+  closeMenus();
+  var items=MENUS[name];
+  if(!items){
+    var lbl=trigger.getAttribute('data-tip')||(trigger.textContent||'').trim()||'Menu';
+    items=L([[lbl,{dis:true}],'-',['Preferences…',null,'i-settings'],['Reload Preview']]);
+  }
+  var box=buildLevel(items,0);
+  var r=trigger.getBoundingClientRect();
+  var inHeader=has(trigger,'bl-hdr-menu')||has(trigger,'bl-hdr-tgl')||has(trigger,'bl-menubar')||has(trigger,'bl-tab');
+  placeMenu(box,r.left+2,inHeader?r.bottom+1:r.bottom+2);
+  menuTrig=trigger;
+  trigger.classList.add('open');
+}
+document.addEventListener('mousedown',function(e){
+  var inMenu=e.target.closest?e.target.closest('.bl-menu'):null;
+  if(inMenu)return;
+  var tr=e.target.closest?e.target.closest('[data-menu]'):null;
+  if(tr){
+    if(isContextTrigger(tr)&&e.button!==2)return;
+    openMenu(tr);
+    return;
+  }
+  closeMenus();
+});
+document.addEventListener('contextmenu',function(e){
+  var tr=e.target.closest?e.target.closest('#areaCanvas,#timelineBody'):null;
+  if(!tr)return;
+  e.preventDefault();
+  openMenu(tr);
+});
+document.addEventListener('mouseover',function(e){
+  if(!menuTrig)return;
+  var tr=e.target.closest?e.target.closest('[data-menu]'):null;
+  if(!tr||tr===menuTrig)return;
+  if(openMenus.some(function(m){return m.el.contains(tr)}))return;
+  openMenu(tr);
+});
+/* ======================================================================
+   10. Рабочие пространства, Outliner, сплиттеры
+   ====================================================================== */
+var WS=$('#workspaces');
+if(WS)WS.addEventListener('click',function(e){
+  var w=e.target.closest?e.target.closest('.bl-ws'):null;
+  if(!w)return;
+  $$('.bl-ws',WS).forEach(function(x){x.classList.remove('active')});
+  w.classList.add('active');
+  setHint('Workspace: <b>'+w.textContent.trim()+'</b>');
+});
+
+/* --- Outliner: выбор строки, свёртка ветвей, поиск --- */
+var OBODY=$('#outlinerBody');
+function selectRow(li){
+  $$('.bl-li',OBODY).forEach(function(x){x.classList.remove('sel')});
+  li.classList.add('sel');
+  var lbl=$('.lbl',li);
+  setHint('Выбран объект: <b>'+(lbl?lbl.textContent.trim():'')+'</b>');
+}
+function toggleBranch(li){
+  var tri=$('.tri',li);
+  if(!tri)return;
+  var depth=parseInt(li.getAttribute('data-depth')||'0',10);
+  var closed=tri.classList.toggle('closed');
+  var node=li.nextElementSibling;
+  while(node&&node.classList&&node.classList.contains('bl-li')){
+    var d=parseInt(node.getAttribute('data-depth')||'0',10);
+    if(d<=depth)break;
+    node.style.display=closed?'none':'';
+    if(closed){var nt=$('.tri',node);if(nt)nt.classList.remove('closed')}
+    node=node.nextElementSibling;
+  }
+}
+if(OBODY)OBODY.addEventListener('click',function(e){
+  var t=e.target;
+  if(!t.closest)return;
+  var otg=t.closest('.bl-li .tgl[data-toggle]');
+  if(otg){
+    otg.classList.toggle('off');
+    var kind=otg.getAttribute('data-toggle');
+    setHint((kind==='vis'?'Видимость':kind==='sel'?'Выбираемость':'Отображение во вьюпорте')+
+      ': '+(has(otg,'off')?'выключено':'включено'));
+    return;
+  }
+  var tri=t.closest('.bl-li .tri');
+  if(tri){toggleBranch(tri.closest('.bl-li'));return}
+  var li=t.closest('.bl-li');
+  if(li)selectRow(li);
+});
+var SEARCHIN=$('#outlinerSearchInput');
+if(SEARCHIN)SEARCHIN.addEventListener('input',function(){
+  var q=SEARCHIN.value.trim().toLowerCase();
+  $$('.bl-li',OBODY).forEach(function(li){
+    if(!q){li.style.display='';return}
+    var lbl=$('.lbl',li);
+    li.style.display=(lbl&&lbl.textContent.toLowerCase().indexOf(q)>=0)?'':'none';
+  });
+});
+
+/* --- сплиттеры: изменение размеров областей --- */
+$$('.bl-split').forEach(function(sp){
+  sp.addEventListener('mousedown',function(e){
+    e.preventDefault();
+    var axis=sp.getAttribute('data-axis');
+    var target=document.getElementById(sp.getAttribute('data-target')||'');
+    if(!target)return;
+    var min=parseInt(sp.getAttribute('data-min')||'0',10);
+    var max=parseInt(sp.getAttribute('data-max')||'9999',10);
+    var inv=sp.getAttribute('data-invert')==='1';
+    var start=axis==='x'?e.clientX:e.clientY;
+    var box=target.getBoundingClientRect();
+    var size0=axis==='x'?box.width:box.height;
+    sp.classList.add('drag');
+    function move(ev){
+      var d=(axis==='x'?ev.clientX:ev.clientY)-start;
+      var s=Math.round(Math.max(min,Math.min(max,size0+(inv?-d:d))));
+      target.style.flex='none';
+      if(axis==='x'){target.style.width=s+'px'}else{target.style.height=s+'px'}
+      if(target.id==='areaTimeline')buildTimeline();else buildGrid();
+    }
+    function stop(){
+      document.removeEventListener('mousemove',move);
+      document.removeEventListener('mouseup',stop);
+      sp.classList.remove('drag');
+      buildGrid();
+      buildTimeline();
+    }
+    document.addEventListener('mousemove',move);
+    document.addEventListener('mouseup',stop);
+  });
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenus()});
+
+/* ======================================================================
+   9. Проводка интерфейса: панели, вкладки, чекбоксы, кнопки, шейдинг
+   ====================================================================== */
+/* --- сворачивание панелей по клику на заголовок --- */
+document.addEventListener('click',function(e){
+  var head=e.target.closest?e.target.closest('.bl-panel-head'):null;
+  if(!head||e.target.closest('button'))return;
+  var panel=head.closest('.bl-panel,.bl-subpanel');
+  if(panel)panel.classList.toggle('collapsed');
+});
+
+/* --- вкладки: navbar Properties и сайдбар вьюпорта --- */
+function wireTabs(nav,root,pageSel){
+  if(!nav||!root)return;
+  var pages=$$(pageSel,root);
+  $$('[data-tab]',nav).forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var tab=btn.getAttribute('data-tab');
+      $$('[data-tab]',nav).forEach(function(b){b.classList.remove('active')});
+      btn.classList.add('active');
+      pages.forEach(function(p){p.classList.toggle('active',p.getAttribute('data-page')===tab)});
+      setHint('Вкладка: <b>'+(btn.getAttribute('data-tip')||tab)+'</b>');
+    });
+  });
+}
+wireTabs($('#propsNav'),$('#propsPages'),'.bl-page');
+wireTabs($('#sidebarTabs'),$('.bl-v3d-sidebar .bl-sidebar-body'),'.bl-stabpage');
+
+/* --- вкладка «Visible Tabs»: список генерируется из navbar --- */
+var VISLIST=$('#visibleTabList'),PNAV=$('#propsNav');
+if(VISLIST&&PNAV){
+  $$('.bl-navbtn',PNAV).forEach(function(btn){
+    var row=document.createElement('div');
+    row.className='bl-chkrow';
+    row.setAttribute('data-vis',btn.getAttribute('data-tab'));
+    row.innerHTML='<span class="bl-check on">'+svgc('i-check','ic-12')+'</span><span>'+
+      btn.getAttribute('data-tip')+'</span>';
+    VISLIST.appendChild(row);
+  });
+}
+
+/* --- делегированные клики по «мелким» контролам --- */
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(!t.closest)return;
+  var vrow=t.closest('#visibleTabList .bl-chkrow');
+  if(vrow&&PNAV){
+    var ck=$('.bl-check',vrow);
+    var on=!has(ck,'on');
+    ck.classList.toggle('on',on);
+    var nb=$('.bl-navbtn[data-tab="'+vrow.getAttribute('data-vis')+'"]',PNAV);
+    if(nb){
+      nb.style.display=on?'':'none';
+      if(!on)nb.classList.remove('active');
+      setHint('<b>'+nb.getAttribute('data-tip')+'</b>: '+(on?'вкладка показана':'вкладка скрыта'));
+    }
+    return;
+  }
+  var chk=t.closest('[data-chk]');
+  if(chk){chk.classList.toggle('on');return}
+  var eb=t.closest('.bl-enum .bl-btn');
+  if(eb){
+    $$('.bl-btn',eb.parentNode).forEach(function(b){b.classList.remove('on')});
+    eb.classList.add('on');
+    return;
+  }
+  var pin=t.closest('#btnPinID');
+  if(pin){
+    pin.classList.toggle('on');
+    setHint('Toggle Pin ID: '+(has(pin,'on')?'редактор закреплён за дата-блоком':'закрепление снято'));
+    return;
+  }
+  var sh=t.closest('.bl-shade');
+  if(sh){
+    $$('.bl-shade').forEach(function(b){b.classList.remove('on')});
+    sh.classList.add('on');
+    var cv=$('#areaCanvas');
+    if(cv)cv.setAttribute('data-shading',sh.getAttribute('data-shading'));
+    setHint('Viewport Shading: <b>'+sh.getAttribute('data-tip')+'</b>');
+    return;
+  }
+  var tl=t.closest('[data-tgl]');
+  if(tl&&!tl.hasAttribute('data-menu')){
+    tl.classList.toggle('on');
+    setHint('<b>'+(tl.getAttribute('data-tip')||'Toggle')+'</b>: '+(has(tl,'on')?'включено':'выключено'));
+    return;
+  }
+  var tool=t.closest('.bl-tool');
+  if(tool&&!tool.hasAttribute('data-menu')){
+    $$('.bl-tool').forEach(function(b){b.classList.remove('active')});
+    tool.classList.add('active');
+    setHint('Инструмент: <b>'+tool.getAttribute('data-tip')+'</b>');
+  }
+});
+window.addEventListener('resize',closeMenus);
+
+window.addEventListener('blur',closeMenus);
+
+
+
+/* ======================================================================
+   11. Сетка вьюпорта, таймлайн, статус-бар, инициализация
+   ====================================================================== */
+var TL={frame:1,start:1,end:250,fps:24,playing:false,last:0};
+
+/* ------------------------- сетка 3D-вьюпорта --------------------------- */
+function buildGrid(){
+  var g=$('#gridLayer');
+  if(!g)return;
+  var w=g.clientWidth||0,h=g.clientHeight||0;
+  if(w<60||h<60){g.innerHTML='';return}
+  var horizon=Math.round(h*0.34);
+  var vx=Math.round(w/2);
+  var oy=Math.round(horizon+(h-horizon)*0.40);
+  var step=Math.max(22,Math.round(w/22));
+  var html='';
+  for(var i=-22;i<=22;i++){
+    var x=vx+i*step;
+    if(x<-w*0.6||x>w*1.6)continue;
+    html+='<div class="vt'+(i%4===0?' major':'')+'" style="left:'+x+'px;transform:skewX('+
+      (i*1.1).toFixed(2)+'deg);transform-origin:50% '+horizon+'px"></div>';
+  }
+  var y=horizon,k=3;
+  while(y<h){
+    html+='<div class="hz'+(k%4===0?' major':'')+'" style="top:'+Math.round(y)+'px"></div>';
+    y+=k;
+    k*=1.3;
+  }
+  html+='<div class="hz major" style="top:'+horizon+'px"></div>';
+  html+='<div class="axis y" style="left:'+vx+'px;top:'+horizon+'px;height:'+(h-horizon)+'px;width:2px"></div>';
+  html+='<div class="axis x" style="left:0;top:'+oy+'px;width:'+w+'px"></div>';
+  html+='<div class="axis-title" style="left:'+(vx+6)+'px;top:'+(horizon+4)+'px;color:var(--axis-y)">Y</div>';
+  html+='<div class="axis-title" style="left:'+(w-14)+'px;top:'+(oy-15)+'px;color:var(--axis-x)">X</div>';
+  html+='<div class="axis-title" style="left:'+(vx+3)+'px;top:'+(oy-15)+'px;color:#d0d0d0">Z</div>';
+  g.innerHTML=html;
+}
+
+/* ---------------------------- таймлайн --------------------------------- */
+function buildTimeline(){
+  var ruler=$('#tlRuler');
+  if(!ruler)return;
+  var w=ruler.clientWidth||0,span=TL.end-TL.start+1;
+  var body=$('#tlBody'),holder=$('#timelineBody')||body;
+  if(w<40){
+    ruler.innerHTML='';
+    if(body)$$('.bl-tl-tick',body).forEach(function(n){n.parentNode.removeChild(n)});
+    return;
+  }
+  var px=w/span,rhtml='',bhtml='';
+  for(var f=TL.start;f<=TL.end;f++){
+    if(f%5)continue;
+    var x=Math.round((f-TL.start)*px),major=(f%25===0);
+    rhtml+='<div class="bl-tl-tick'+(major?' major':'')+'" style="left:'+x+'px"></div>';
+    if(major)rhtml+='<div class="bl-tl-num" style="left:'+x+'px">'+f+'</div>';
+    bhtml+='<div class="bl-tl-tick'+(major?' major':'')+'" style="left:'+x+'px"></div>';
+  }
+  ruler.innerHTML=rhtml;
+  if(body){
+    $$('.bl-tl-tick',body).forEach(function(n){n.parentNode.removeChild(n)});
+    var tmp=document.createElement('div');
+    tmp.innerHTML=bhtml;
+    while(tmp.firstChild)body.insertBefore(tmp.firstChild,body.firstChild);
+  }
+  if(holder&&!$('#tlPlayhead')){
+    var ph=document.createElement('div');
+    ph.className='bl-tl-playhead';
+    ph.id='tlPlayhead';
+    holder.appendChild(ph);
+  }
+  updateFrameUI();
+}
+function movePlayhead(){
+  var ph=$('#tlPlayhead'),ruler=$('#tlRuler');
+  if(!ph||!ruler)return;
+  var w=ruler.clientWidth||0,span=TL.end-TL.start+1;
+  ph.style.left=Math.round((TL.frame-TL.start)*(w/span))+'px';
+}
+function updateFrameUI(){
+  movePlayhead();
+  var cur=$('[data-tip="Current Frame"]');
+  if(cur)cur.textContent=TL.frame;
+  var note=$('.bl-tl-note');
+  if(note)note.textContent='Timeline — кадры '+TL.start+' … '+TL.end+', текущий кадр '+TL.frame;
+}
+var PLAYBTN=$('#btnPlay');
+function playIcon(){
+  if(!PLAYBTN)return;
+  var u=$('use',PLAYBTN);
+  if(u)u.setAttribute('href',TL.playing?'#i-pause':'#i-play');
+}
+function tickPlay(ts){
+  if(!TL.playing)return;
+  if(!TL.last)TL.last=ts;
+  var dt=(ts-TL.last)/1000;
+  if(dt>=1/TL.fps){
+    TL.last=ts;
+    TL.frame=Math.floor(TL.frame+dt*TL.fps);
+    if(TL.frame>TL.end)TL.frame=TL.start;
+    updateFrameUI();
+  }
+  requestAnimationFrame(tickPlay);
+}
+if(PLAYBTN)PLAYBTN.addEventListener('click',function(){
+  TL.playing=!TL.playing;
+  TL.last=0;
+  PLAYBTN.classList.toggle('on',TL.playing);
+  playIcon();
+  setHint(TL.playing?'Воспроизведение анимации — <b>Spacebar</b> для паузы':'Пауза');
+  if(TL.playing)requestAnimationFrame(tickPlay);
+  else updateFrameUI();
+});
+
+/* --------------------- перемотка по клику и протяжкой ------------------ */
+var TLB=$('#timelineBody');
+if(TLB)TLB.addEventListener('mousedown',function(e){
+  if(e.button!==0)return;
+  var ref=$('#tlRuler')||TLB;
+  var r=ref.getBoundingClientRect(),span=TL.end-TL.start+1;
+  function setFrame(ev){
+    TL.frame=Math.max(TL.start,Math.min(TL.end,Math.round(TL.start+(ev.clientX-r.left)/r.width*span)));
+    updateFrameUI();
+  }
+  setFrame(e);
+  setHint('Текущий кадр: <b>'+TL.frame+'</b>');
+  function mv(ev){setFrame(ev)}
+  function up(){
+    document.removeEventListener('mousemove',mv);
+    document.removeEventListener('mouseup',up);
+  }
+  document.addEventListener('mousemove',mv);
+  document.addEventListener('mouseup',up);
+});
+
+/* ---------------------------- статус-бар ------------------------------- */
+var CV=$('#areaCanvas'),MOUSE=$('#statusMouse');
+if(CV&&MOUSE)CV.addEventListener('mousemove',function(e){
+  var r=CV.getBoundingClientRect();
+  MOUSE.textContent='X: '+Math.round(e.clientX-r.left)+' px, Y: '+Math.round(e.clientY-r.top)+' px';
+});
+if(CV)CV.addEventListener('wheel',function(e){
+  e.preventDefault();
+  setHint((e.deltaY<0?'Zoom In':'Zoom Out')+' — прокрутка колеса во вьюпорте');
+},{passive:false});
+
+/* ------------------------------ hotkeys -------------------------------- */
+document.addEventListener('keydown',function(e){
+  var tag=(e.target&&e.target.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA')return;
+  var k=(e.key||'').toLowerCase();
+  if(k==='t'){
+    var tb=$('#areaToolbar');
+    if(tb)toggle(tb,'bl-hidden');
+    setHint('Toolbar: <b>T</b> — панель инструментов');
+  }else if(k==='n'){
+    var sb=$('#v3dSidebar');
+    if(sb)toggle(sb,'bl-hidden');
+    setHint('Sidebar: <b>N</b> — боковая панель');
+  }else if(e.code==='Space'){
+    e.preventDefault();
+    if(PLAYBTN)PLAYBTN.click();
+  }
+});
+
+/* --------------------------- инициализация ----------------------------- */
+function blInit(){
+  buildGrid();
+  buildTimeline();
+  updateFrameUI();
+  playIcon();
+}
+blInit();
+window.addEventListener('load',blInit);
+var rsTimer=0;
+window.addEventListener('resize',function(){
+  clearTimeout(rsTimer);
+  rsTimer=setTimeout(function(){buildGrid();buildTimeline()},120);
+});
+</script>
+</body>
+</html>

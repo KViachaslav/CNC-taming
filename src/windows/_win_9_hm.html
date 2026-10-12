@@ -1,0 +1,45 @@
+<!-- ==================== ОКНО: КАРТА ВЫСОТ (автоуровень зондом) ================== -->
+<div class="bl-win" id="win-hm" data-ws="send" data-label="Карта высот">
+  <div class="bl-win-head"><svg class="ic ic-14"><use href="#i-proportional"/></svg><span class="title">Карта высот (автоуровень зондом)</span><span class="x" data-close>✕</span></div>
+  <div class="bl-win-body">
+    <div class="panelTitle" style="margin-top:0"><span>Состояние карты</span><span id="hmBadge" class="machineState">карта не собрана</span></div>
+
+    <div class="panelTitle"><span>Сетка</span></div>
+    <div class="hmPair">
+      <div><label for="hmX0">X от, мм</label><input id="hmX0" type="number" step="0.001" value="0" /></div>
+      <div><label for="hmX1">X до, мм</label><input id="hmX1" type="number" step="0.001" value="100" /></div>
+      <div><label for="hmY0">Y от, мм</label><input id="hmY0" type="number" step="0.001" value="0" /></div>
+      <div><label for="hmY1">Y до, мм</label><input id="hmY1" type="number" step="0.001" value="100" /></div>
+      <div><label for="hmNx">Точек по X</label><input id="hmNx" type="number" min="2" max="20" step="1" value="3" /></div>
+      <div><label for="hmNy">Точек по Y</label><input id="hmNy" type="number" min="2" max="20" step="1" value="3" /></div>
+    </div>
+    <div class="btn-row one">
+      <button id="btnHmFromGcode">Диапазон из G-code</button>
+    </div>
+    <div class="hmHint">Сетка задаётся в <b>текущих рабочих</b> координатах, поэтому сначала выставьте ноль по X/Y. Всего точек <span class="mono">Nx × Ny</span> — каждая точка это 4 команды, весь сбор занимает минуты. Ориентируйтесь на 3×3 … 8×8.</div>
+
+    <div class="panelTitle"><span>Зондирование</span></div>
+    <div class="cnc-row"><label>Безопасная Z (подход/отвод), мм</label><input id="hmSafe" type="number" step="0.1" value="5" /></div>
+    <div class="cnc-row"><label>Макс. ход вниз (за точку), мм</label><input id="hmDepth" type="number" step="0.1" value="10" /></div>
+    <div class="cnc-row"><label>Подача зонда, мм/мин</label><input id="hmFeed" type="number" step="10" value="100" /></div>
+    <div class="hmHint">На каждую точку уходит 4 строки: <span class="mono">G90 G0 Z…</span> → <span class="mono">G90 G0 X… Y…</span> → <span class="mono">G91 G38.2 Z-… F…</span> → <span class="mono">G90 G0 Z…</span>. Нужен зонд на пине probe (<span class="mono">$6</span>) и состояние <b>Idle</b> вместо ALARM. Если касания нет в пределах хода, GRBL отдаст <span class="mono">ALARM:5</span>, сбор прервётся — увеличьте ход/подачу и повторите после <span class="mono">$X</span>.</div>
+
+    <div class="panelTitle"><span>Действия</span></div>
+    <div class="btn-row one"><button class="btn-ok" id="btnHmStart">Собрать карту (G38.2)</button></div>
+    <div class="btn-row">
+      <button class="btn-danger" id="btnHmStop">Стоп сбора</button>
+      <button id="btnHmClear">Сбросить карту</button>
+    </div>
+    <div class="btn-row one"><button class="btn-ok" id="btnHmApply">Применить к G-code (Z-смещения)</button></div>
+    <div class="btn-row">
+      <button id="btnHmUndo">Отменить коррекцию</button>
+      <button id="btnHmPreview">Показать карту в 3D</button>
+    </div>
+    <div class="cnc-row"><label><input id="chkHmInsertZ" type="checkbox" /> вставлять <span class="mono">G0 Z…</span> перед каждой строкой с X/Y (без галочки правятся только строки, где Z уже есть — плоский гравёрный код)</label></div>
+    <div class="hmMsg" id="hmMsg">Карта не собрана.</div>
+
+    <div class="panelTitle"><span>Замеры Z, мм</span><span class="mono" id="hmSummary">—</span></div>
+    <div class="hmBox" id="hmTableBox"><div class="hmHint">Нажмите «Собрать карту».</div></div>
+    <div class="hmHint">Смещение точки = её Z минус <b>максимальный</b> Z карты: 0 — самая высокая точка, остальные отрицательные. Значит <b>Z=0 программы нужно ставить в самой высокой точке карты</b> (например, обнулить Z там же, где зонд дал максимум), иначе глубина уедет на разброс высот.</div>
+  </div>
+</div>
